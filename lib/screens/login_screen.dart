@@ -147,6 +147,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     side: const BorderSide(color: Color(0xFFFF8025)),
                   ),
                 ),
+                const Text(
+                  "Acceso con Google estará disponible próximamente.",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () {
@@ -155,9 +159,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       MaterialPageRoute(builder: (_) => RegisterScreen()),
                     );
                   },
-                  child: const Text(
-                    "¿No tienes cuenta? Regístrate aquí",
-                    style: TextStyle(color: Colors.black87),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: "¿No tienes cuenta? ",
+                          style: TextStyle(
+                            color: Colors.grey[700], // gris oscuro
+                            fontSize: 16,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Regístrate aquí",
+                          style: TextStyle(
+                            color: Color(0xFFFF8025), // naranja intenso
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

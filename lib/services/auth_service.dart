@@ -42,7 +42,8 @@ class AuthService {
       final res = await ApiService.post("auth/register/", userData);
       return {"ok": true, "data": res.data};
     } on DioException catch (e) {
-      return {"ok": false, "error": e.response?.data ?? e.message};
+      final msg = e.response?.data ?? e.message ?? "Error desconocido";
+      return {"ok": false, "error": msg};
     }
   }
 
