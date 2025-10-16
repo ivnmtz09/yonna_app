@@ -196,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Image.asset('assets/images/mascota.png', height: 130),
                   const SizedBox(height: 8),
                   Text(
-                    "Jamaya Pia, $userName",
+                    "Jamaya Pia?, $userName",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
