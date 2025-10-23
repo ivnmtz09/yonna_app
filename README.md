@@ -1,169 +1,183 @@
-# yonna_app
+# Yonna App
 
-A new Flutter project.
+## Descripción General
 
-## Getting Started
+**Yonna App** es la aplicación móvil del proyecto **Yonna Akademia**, una plataforma educativa gamificada para aprender **Wayuunaiki** (desde el español). Inspirada en la experiencia de aprendizaje de Duolingo, combina lecciones, retos y progresión gamificada.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-* [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-* [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+El cliente móvil está desarrollado en **Flutter**, y se conecta a un **backend Django** compartido con un frontend **React**.
 
 ---
 
-## Yonna App — README actualizado
+## Objetivo del Proyecto
 
-Este repositorio contiene la aplicación móvil **Yonna App** (Flutter), cliente móvil del proyecto **Yonna Akademia**. Mantengo la introducción original arriba y, a continuación, agrego la descripción técnica, el flujo de pantallas, cómo se conecta con el backend y con el frontend web, y las instrucciones para ejecutar y preparar el proyecto para entrega.
+En esta fase inicial, el objetivo es:
 
-### Objetivo del proyecto
+* Implementar un flujo de autenticación unificado (registro y login manual).
+* Crear las pantallas principales: *Splash*, *Welcome*, *Login*, *Register*, *Home*, *Profile*.
+* Persistir la sesión del usuario.
+* Establecer una base visual y funcional para la futura gamificación.
 
-Yonna App es la aplicación móvil de una plataforma educativa gamificada para aprender Wayuunaiki (desde español). El objetivo es construir una experiencia tipo "Duolingo" que combine lecciones, retos y progresión gamificada, conectada a un backend Django compartido con un frontend React.
+---
 
-En esta fase el objetivo es tener un flujo de autenticación unificado (registro manual, login manual y login con Google en el backend), pantallas principales (Splash, Welcome, Login, Register, Home, Profile), persistencia de sesión segura, y una base visual lista para añadir gamificación.
+## Arquitectura General
 
-### Arquitectura general
+* **Frontend Web:** React (repo: `yonna_akademia`), comparte el backend Django.
+* **Mobile Client:** Flutter (este repo), usa tokens JWT para autenticación.
+* **Backend:** Django 5 + Django REST Framework + SimpleJWT.
 
-* **Frontend Web**: React (repo: `yonna_akademia`), consume el mismo backend Django.
-* **Mobile Client**: Flutter (este repo), comparte la API con React y usa tokens JWT.
-* **Backend**: Django 5 + Django REST Framework + SimpleJWT. Implementa endpoints de autenticación y recursos (users, profile, courses, quizzes, etc.).
+Todos los clientes consumen los mismos endpoints REST del backend.
 
-Todos los clientes (React y Flutter) consumen los mismos endpoints REST del backend.
+---
 
-### Autenticación y flujo de tokens
+## Autenticación y Flujo de Datos
 
-* Endpoints relevantes en el backend (ejemplos):
+Se migró de `dio` y `flutter_secure_storage` a un stack más simple:
 
-  * `POST /api/auth/login/` → obtención de `access` y `refresh` (JWT)
-  * `POST /api/auth/register/` → registro de usuario (recibe `email`, `first_name`, `last_name`, `password1`, `password2`)
-  * `GET  /api/auth/profile/` → devuelve perfil extendido (incluye `usuario` con `first_name`, `email`, `role`, `level`)
-  * `POST /api/auth/google/` → login/registro mediante token de Google (OAuth2)
+* **Red:** paquete `http` (oficial de Dart).
+* **Almacenamiento local:** `shared_preferences` para guardar tokens y datos de usuario (JSON).
+* **Servicio centralizado:** `lib/services/api_service.dart` gestiona toda la red y el estado de autenticación.
+* **Patrón Singleton:** `ApiService` se inicializa una vez y se usa globalmente.
 
-* En Flutter:
+### Flujo de Login y Perfil
 
-  * Se usa **Dio** con un interceptor (en `lib/services/api_service.dart`) que añade automáticamente `Authorization: Bearer <token>` si existe token en `flutter_secure_storage`.
-  * Tokens se guardan de forma segura con `flutter_secure_storage` (`lib/utils/secure_storage.dart`).
-  * `AuthService` centraliza llamadas de login, register, loginWithGoogle y logout.
+1. El usuario ingresa sus credenciales en `LoginScreen`.
+2. `ApiService().login()` envía `email` y `password` al endpoint `POST /api/auth/login/`.
+3. Si es exitoso, el backend devuelve los *tokens* y datos del usuario.
+4. `ApiService` guarda la información en `SharedPreferences` y en memoria.
+5. La app navega a `HomeScreen`.
+6. `ProfileScreen` lee los datos directamente de `ApiService().userData` sin llamar a la API.
 
-### Estructura de pantallas (screens)
+---
 
-* `SplashScreen`:
+## Estructura de Pantallas
 
-  * Verifica si existe token válido (llamando a storage o validando con backend).
-  * Redirige a `HomeScreen` si está autenticado o a `WelcomeScreen` si no.
+### SplashScreen
 
-* `WelcomeScreen`:
+* Muestra el logo animado y el saludo "Antüshi pia" (Bienvenido).
+* Verifica si hay token en `SharedPreferences`.
+* Redirige a `HomeScreen` o `WelcomeScreen`.
 
-  * Presentación (logo, descripción corta).
-  * Botones: "Acceder" (→ `LoginScreen`) y "Registrarse" (→ `RegisterScreen`).
-  * Aviso: "Inicio con Google disponible próximamente" (se muestra hasta habilitar).
-  * Mascota (imagen en esquina inferior derecha).
+### WelcomeScreen
 
-* `LoginScreen`:
+* Presentación con "Antüshi pia (Bienvenido)".
+* Botones: **Iniciar Sesión** → `LoginScreen`, **Registrarse** → `RegisterScreen`.
 
-  * Form: `email`, `password` con opción ver/ocultar.
-  * Botón login → llama `POST /api/auth/login/` y guarda tokens si OK.
-  * Link a registro.
+### LoginScreen
 
-* `RegisterScreen`:
+* Logo y subtítulo "Yonna App by Yonna Akademia".
+* Formulario: email y password.
+* Envía `POST /api/auth/login/`.
+* Incluye opción "Entrar con Google" (próximamente).
 
-  * Campos: `first_name`, `last_name`, `email`, `password1`, `password2`.
-  * Envía JSON exactamente en la forma que espera el backend.
-  * Muestra mensajes de error tal como los devuelve el backend.
+### RegisterScreen
 
-* `HomeScreen` (Dashboard básico):
+* Logo y subtítulo "Yonna App by Yonna Akademia".
+* Campos: `first_name`, `last_name`, `email`, `password1`, `password2`.
+* Envía `POST /api/auth/register/`.
 
-  * AppBar: saludo en español "Hola, <Nombre>" (nombre obtenido desde `GET /api/auth/profile/`), botón Perfil y Logout.
-  * Cuerpo: mensaje informativo "Próximamente..." con tarjetas (Lecciones, Retos, Progreso, Cultura) marcadas como "Próximamente".
-  * Mascota centrada en la parte inferior. Debajo de la mascota, saludo en wayuunaiki (ej. "Jamaya pia, <usuario>?" o "Ajaa, <usuario>!").
+### HomeScreen (Dashboard)
 
-* `ProfileScreen`:
+* AppBar con título "Yonna App".
+* Drawer con "Mi Perfil" y "Cerrar Sesión".
+* Cuerpo: mensaje "Próximamente" con la mascota.
 
-  * Llama `GET /api/auth/profile/` y muestra:
+### ProfileScreen
 
-    * Nombre completo, correo.
-    * Rol traducido (admin → Administrador, teacher → Sabedor/Docente, student → Estudiante).
-    * Nivel traducido (beginner → Principiante, intermediate → Intermedio, advanced → Avanzado).
-  * Mensaje: "La edición de perfil estará disponible próximamente." (botón Editar perfil reservado para futuro).
+* Muestra datos del usuario desde `ApiService().userData`.
+* Incluye botón "Cerrar Sesión".
 
-### Esquema de navegación (resumen)
+---
+
+## Esquema de Navegación
 
 ```
 SplashScreen
   ├─ (token válido) → HomeScreen
-  └─ (sin token)   → WelcomeScreen
+  └─ (sin token)    → WelcomeScreen
 
 WelcomeScreen
-  ├─ Acceder → LoginScreen
-  └─ Registrarse → RegisterScreen
+  ├─ Iniciar Sesión → LoginScreen
+  └─ Registrarse    → RegisterScreen
 
-LoginScreen/ RegisterScreen
-  └─ Login/Registro exitoso → HomeScreen
+LoginScreen / RegisterScreen
+  └─ Exitoso → HomeScreen
 
 HomeScreen
-  ├─ Perfil → ProfileScreen
-  └─ Logout → limpia token y → SplashScreen
+  ├─ Mi Perfil → ProfileScreen
+  └─ Cerrar Sesión → limpia tokens → SplashScreen
 ```
 
-### Cómo conectamos los servicios de autenticación (paso a paso)
+---
 
-1. **Configurar el backend**:
+## Conexión con el Backend (Paso a Paso)
 
-   * Ejecutar Django: `python manage.py runserver 0.0.0.0:8000` (para exponer la API en la red local).
-   * Asegurar CORS (ej. `CORS_ALLOW_ALL_ORIGINS = True` o `CORS_ALLOWED_ORIGINS` con tus ORIGENES locales).
-   * Verificar que los endpoints `/api/auth/login/`, `/api/auth/register/` y `/api/auth/profile/` están disponibles.
+### 1. Configurar Backend
 
-2. **Configurar Flutter (cliente móvil)**:
+* Ejecutar Django: `python manage.py runserver 0.0.0.0:8000`
+* Verificar endpoints disponibles: `/api/auth/login/`, `/api/auth/register/`, `/api/auth/profile/`
+* Ajustar configuración CORS si es necesario.
 
-   * `lib/services/api_service.dart` contiene `baseUrl` (por defecto configurado a la IP de la máquina de desarrollo, p. ej. `http://192.168.1.4:8000/api/`). Si pruebas desde un emulador AVD usa `10.0.2.2`.
-   * `AuthService.login()` y `AuthService.register()` envían las peticiones correctas al backend.
-   * Si el login retorna `access` y `refresh`, el cliente guarda `access` en `flutter_secure_storage` y el interceptor de Dio añade `Authorization` a todas las peticiones subsecuentes.
-   * `GET /api/auth/profile/` devuelve la información del usuario autenticado; el cliente la consume para mostrar el nombre y otros datos.
+### 2. Configurar Flutter
 
-3. **Persistencia y logout**:
+* En `lib/services/api_service.dart`, actualizar `baseUrl` con la IP local:
 
-   * Los tokens JWT se guardan en `flutter_secure_storage`.
-   * Al hacer logout se limpian los tokens y se redirige al `SplashScreen`.
+  * Ejemplo: `http://192.168.1.4:8000/api/` (teléfono físico)
+  * `http://10.0.2.2:8000/api/` (emulador Android)
+* `ApiService.login()` y `ApiService.register()` usan `http`.
+* `ApiService.getProfile()` agrega header `Authorization: Bearer <token>`.
 
-### Instrucciones para ejecutar (rápido)
+### 3. Persistencia y Logout
 
-1. Asegúrate de que el backend Django esté corriendo y accesible desde la red local (ver `ipconfig` / `ifconfig` para obtener la IP de tu máquina).
-2. Ajusta `baseUrl` en `lib/services/api_service.dart` con la IP (ej. `http://192.168.1.4:8000/api/`) o usa `10.0.2.2` para emulador AVD.
-3. Ejecuta el backend:
+* Tokens y datos se guardan en `SharedPreferences`.
+* `ApiService.logout()` limpia datos y redirige a `SplashScreen`.
 
-   ```bash
-   python manage.py runserver 0.0.0.0:8000
-   ```
-4. Ejecuta la app Flutter:
+---
 
-   ```bash
-   flutter pub get
-   flutter run
-   ```
-5. Para pruebas desde el teléfono físico, conecta el dispositivo a la misma red WiFi que la máquina que ejecuta Django.
+## Instrucciones Rápidas de Ejecución
 
-### Archivos y rutas importantes
+### Backend
 
-* `lib/screens/` → pantallas: `splash_screen.dart`, `welcome_screen.dart`, `login_screen.dart`, `register_screen.dart`, `home_screen.dart`, `profile_screen.dart`.
-* `lib/services/` → `api_service.dart`, `auth_service.dart`.
-* `lib/utils/secure_storage.dart` → helpers para almacenamiento seguro.
-* `assets/images/` → `yonna.png`, `mascota.png`, `icon.png`.
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
 
-### Entregables y recomendaciones para el repositorio
+### Flutter
 
-* Incluye este README actualizado en la raíz del repo Flutter.
-* Asegúrate de tener `.gitignore` correcto y no subir claves (`google-services.json`, `.env`, etc.).
-* Sube la imagen `mascota.png` y el `icon.png` (o genera íconos con `flutter_launcher_icons`).
+```bash
+flutter pub get
+flutter run
+```
 
-### Qué queremos lograr a futuro
+**Nota:** si pruebas en un teléfono físico, asegúrate de que esté en la misma red WiFi que el backend.
 
-* Habilitar autentificación vía Google (nativa en Android/iOS).
-* Implementar edición de perfil y carga/edición de avatar.
-* Construir y exponer las pantallas de gamificación: lecciones, retos, misiones, progreso con métricas y recompensas.
-* Añadir notificaciones push para retos y progreso.
-* Preparar pipelines de CI/CD y builds por ambiente (dev/staging/prod).
+---
+
+## Archivos y Rutas Importantes
+
+```
+lib/
+├── main.dart               # Inicialización de la app y rutas
+├── screens/                # Pantallas principales
+│   ├── splash_screen.dart
+│   ├── welcome_screen.dart
+│   ├── login_screen.dart
+│   ├── register_screen.dart
+│   ├── home_screen.dart
+│   └── profile_screen.dart
+├── services/
+│   └── api_service.dart    # Servicio unificado de red y autenticación
+└── widgets/
+    ├── app_styles.dart
+    └── yonna_drawer.dart
+```
+
+**Assets:** `assets/images/` contiene `yonna.png`, `mascota.png`, `loading.gif`, `welcome.png`, `saludo.png`.
+
+---
+
+## Futuras Mejoras
+
+* Autenticación con Google (Android/iOS).
+* Edición de perfil y avatar.
+* Pantallas de gamificación: lecciones, retos, misiones y progreso.
+* Notificaciones push.
