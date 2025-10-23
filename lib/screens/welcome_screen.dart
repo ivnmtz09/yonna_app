@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:yonna_app/screens/login_screen.dart';
-import 'package:yonna_app/screens/register_screen.dart';
+import '../widgets/app_styles.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -8,92 +7,90 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0E6),
+      backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              bottom: 20,
-              right: 20,
-              child: Image.asset('assets/images/welcome.png', height: 120),
-            ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/images/yonna.png', height: 120),
-                    const SizedBox(height: 24),
-                    const Text(
-                      "Aprende Wayuunaiki jugando",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF8025),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Conecta la cultura Wayuu con la tecnología.\n"
-                      "Aprende, escucha y vive el idioma ancestral.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Color(0xFF444444)),
-                    ),
-                    const SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => LoginScreen()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF8025),
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: const Text(
-                        "Acceder",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                        side: const BorderSide(color: Color(0xFFFF8025)),
-                      ),
-                      child: const Text(
-                        "Registrarse",
-                        style: TextStyle(
-                          color: Color(0xFFFF8025),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      "El inicio con Google estará disponible próximamente.",
-                      style: TextStyle(
-                        color: Color(0xFF777777),
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(flex: 2),
+              Image.asset('assets/images/welcome.png', height: 160),
+              const SizedBox(height: 24),
+              const Text(
+                'Antüshi pia',
+                style: TextStyle(
+                  fontSize: 28,
+                  color: AppColors.backgroundWhite,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                '(Bienvenido)',
+                style: TextStyle(
+                  color: Color.fromRGBO(255, 255, 255, 0.8),
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Aprende, juega y crece con nosotros',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color.fromRGBO(255, 255, 255, 0.8),
+                  fontSize: 18,
+                ),
+              ),
+              const Spacer(flex: 3),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentOrange,
+                    foregroundColor: AppColors.backgroundWhite,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppStyles.standardBorderRadius,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                  child: const Text('INICIAR SESIÓN'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.backgroundWhite,
+                    side: const BorderSide(
+                        color: AppColors.backgroundWhite, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppStyles.standardBorderRadius,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/register');
+                  },
+                  child: const Text('REGISTRARSE'),
+                ),
+              ),
+              const Spacer(flex: 1),
+            ],
+          ),
         ),
       ),
     );

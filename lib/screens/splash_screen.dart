@@ -1,62 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:yonna_app/screens/welcome_screen.dart';
-import 'package:yonna_app/services/auth_service.dart';
-import 'package:yonna_app/screens/home_screen.dart';
+import 'dart:async';
+import 'package:yonna_app/services/api_service.dart';
+import '../widgets/app_styles.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  // Obtenemos la instancia Singleton
+  final ApiService _apiService = ApiService();
+
   @override
   void initState() {
     super.initState();
-    _initApp();
+    _checkAuthAndNavigate();
   }
 
-  Future<void> _initApp() async {
-    await Future.delayed(const Duration(seconds: 2));
-    final isLoggedIn = await AuthService.isLoggedIn();
-
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 3));
+    bool isAuthenticated = await _apiService.isLoggedIn();
     if (!mounted) return;
-
-    if (isLoggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => HomeScreen()),
-      );
+    if (isAuthenticated) {
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => WelcomeScreen()),
-      );
+      Navigator.pushReplacementNamed(context, '/welcome');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0E6),
+      backgroundColor: AppColors.backgroundWhite,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/yonna.png', height: 120),
-            const SizedBox(height: 20),
-            const Text(
-              "Yonna App",
-              style: TextStyle(
-                color: Color(0xFFFF8025),
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
+            Image.asset(
+              'assets/images/loading.gif',
+              height: 180,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+            const Text(
+              'Yonna App',
+              style: AppStyles.mainTitleStyle,
+            ),
+            const SizedBox(height: 32),
             const CircularProgressIndicator(
-              color: Color(0xFFFF8025),
-              strokeWidth: 2.5,
+              color: AppColors.accentOrange,
+              strokeWidth: 3,
             ),
           ],
         ),
