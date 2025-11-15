@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primaryGreen,
+                  color: AppColors.accentGreen,
                 ),
               ),
               const SizedBox(height: 12),

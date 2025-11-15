@@ -1,5 +1,5 @@
 name: yonna_app
-description: "Yonna App — plataforma educativa Wayuu"
+description: "Yonna Akademia — plataforma educativa para aprender Wayuunaiki"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,13 +11,17 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Stack de red y almacenamiento final
+  # Gestión de estado
+  provider: ^6.1.2
+  
+  # Stack de red y almacenamiento
   http: ^1.2.1
   shared_preferences: ^2.2.3
   
-  # Otras dependencias
+  # Autenticación con Google
   google_sign_in: ^6.2.1
-  provider: ^6.1.2 
+  
+  # Iconos
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
@@ -37,4 +41,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-

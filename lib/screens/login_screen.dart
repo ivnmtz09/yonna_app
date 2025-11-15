@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../widgets/app_styles.dart';
-import '../services/api_service.dart';
-import 'home_screen.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,40 +14,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  bool _isLoading = false;
   bool _obscurePassword = true;
-  String _errorMessage = '';
 
-  final ApiService _apiService = ApiService();
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    final provider = context.read<AppProvider>();
+    final success = await provider.login(
+      _emailCtrl.text.trim(),
+      _passwordCtrl.text,
+    );
 
-    try {
-      final data = await _apiService.login(
-        email: _emailCtrl.text.trim(),
-        password: _passwordCtrl.text,
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Credenciales incorrectas'),
+          backgroundColor: AppColors.errorRed,
+        ),
       );
-
-      if (data.containsKey('access')) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        setState(() {
-          _errorMessage = data['detail'] ?? 'Credenciales incorrectas.';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error de conexión. Revisa tu IP o el servidor.';
-        _isLoading = false;
-      });
     }
   }
 
@@ -59,102 +53,143 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
+            padding: AppStyles.screenPadding,
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('assets/images/yonna.png', height: 100),
-                  const SizedBox(height: 16),
-                  const Text("Yonna App",
-                      style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accentOrange)),
-                  const Text("by Yonna Akademia",
-                      style: TextStyle(
-                          fontSize: 14, color: AppColors.primaryGreen)),
-                  const SizedBox(height: 24),
-                  const Text("Iniciar Sesión", style: AppStyles.mainTitleStyle),
-                  const SizedBox(height: 32),
+                  Image.asset('assets/images/yonna.png', height: 120),
+                  const SizedBox(height: AppStyles.spacingM),
+                  Text(
+                    'Yonna Akademia',
+                    style: AppTextStyles.h2.copyWith(
+                      color: AppColors.primaryOrange,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Aprende Wayuunaiki',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(height: AppStyles.spacingXL),
+                  Text('Iniciar Sesión', style: AppTextStyles.h3),
+                  const SizedBox(height: AppStyles.spacingL),
                   TextFormField(
                     controller: _emailCtrl,
-                    decoration: _buildInputDecoration(
-                        labelText: "Correo electrónico",
-                        icon: Icons.email_outlined),
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'Correo electrónico',
+                      icon: Icons.email_outlined,
+                      hintText: 'tu@correo.com',
+                    ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) =>
                         (v == null || v.isEmpty || !v.contains('@'))
-                            ? "Ingrese un correo válido"
+                            ? 'Ingrese un correo válido'
                             : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppStyles.spacingM),
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
-                    decoration: _buildInputDecoration(
-                            labelText: "Contraseña", icon: Icons.lock_outline)
-                        .copyWith(
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'Contraseña',
+                      icon: Icons.lock_outline,
+                      hintText: '••••••••',
+                    ).copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: AppColors.primaryGreen),
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.primaryOrange,
+                        ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
                     ),
                     validator: (v) => (v == null || v.isEmpty)
-                        ? "Ingrese su contraseña"
+                        ? 'Ingrese su contraseña'
                         : null,
                   ),
-                  const SizedBox(height: 24),
-                  if (_errorMessage.isNotEmpty)
-                    Text(_errorMessage,
-                        style: const TextStyle(color: Colors.red, fontSize: 14),
-                        textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  _isLoading
-                      ? const CircularProgressIndicator(
-                          color: AppColors.accentOrange)
-                      : _buildAuthButton(
-                          context: context,
-                          label: "Entrar",
-                          onPressed: _login,
-                          isPrimary: true),
-                  const SizedBox(height: 16),
-                  _buildAuthButton(
-                      context: context,
-                      label: "Entrar con Google",
-                      onPressed: () {},
-                      isPrimary: false,
-                      icon: Icons.login),
-                  const SizedBox(height: 8),
-                  Text("Acceso con Google estará disponible próximamente.",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppStyles.spacingXL),
+                  Consumer<AppProvider>(
+                    builder: (context, provider, child) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: provider.isLoading ? null : _login,
+                              style: AppStyles.primaryButton,
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          AppColors.whiteText,
+                                        ),
+                                      ),
+                                    )
+                                  : const Text('Entrar'),
+                            ),
+                          ),
+                          const SizedBox(height: AppStyles.spacingM),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.login),
+                              label: const Text('Entrar con Google'),
+                              onPressed: () {
+                                // TODO: Implementar Google Sign-In
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('Google Sign-In próximamente'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              style: AppStyles.outlinedButton,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppStyles.spacingS),
+                  Text(
+                    'Acceso con Google estará disponible próximamente',
+                    style: AppTextStyles.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppStyles.spacingL),
                   TextButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const RegisterScreen()));
+                      Navigator.pushReplacementNamed(context, '/register');
                     },
                     child: RichText(
                       text: TextSpan(
-                          style: AppStyles.drawerItemStyle
-                              .copyWith(color: AppColors.darkText),
-                          children: const [
-                            TextSpan(text: "¿No tienes cuenta? "),
-                            TextSpan(
-                                text: "Regístrate aquí",
-                                style: TextStyle(
-                                    color: AppColors.accentOrange,
-                                    fontWeight: FontWeight.bold))
-                          ]),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.darkText,
+                        ),
+                        children: [
+                          const TextSpan(text: '¿No tienes cuenta? '),
+                          TextSpan(
+                            text: 'Regístrate aquí',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.primaryOrange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -164,64 +199,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  InputDecoration _buildInputDecoration(
-      {required String labelText, required IconData icon}) {
-    return InputDecoration(
-        labelText: labelText,
-        labelStyle: const TextStyle(color: AppColors.primaryGreen),
-        prefixIcon: Icon(icon, color: AppColors.primaryGreen),
-        filled: true,
-        fillColor: Colors.white,
-        enabledBorder: OutlineInputBorder(
-            borderRadius: AppStyles.standardBorderRadius,
-            borderSide:
-                BorderSide(color: AppColors.primaryGreen.withOpacity(0.5))),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: AppStyles.standardBorderRadius,
-            borderSide:
-                const BorderSide(color: AppColors.accentOrange, width: 2)),
-        errorBorder: OutlineInputBorder(
-            borderRadius: AppStyles.standardBorderRadius,
-            borderSide: const BorderSide(color: Colors.red, width: 1.5)),
-        focusedErrorBorder: OutlineInputBorder(
-            borderRadius: AppStyles.standardBorderRadius,
-            borderSide: const BorderSide(color: Colors.red, width: 2)));
-  }
-
-  Widget _buildAuthButton(
-      {required BuildContext context,
-      required String label,
-      required VoidCallback onPressed,
-      required bool isPrimary,
-      IconData? icon}) {
-    return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-            onPressed: onPressed,
-            style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                    borderRadius: AppStyles.standardBorderRadius),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: isPrimary
-                    ? AppColors.accentOrange
-                    : AppColors.backgroundWhite,
-                foregroundColor: isPrimary
-                    ? AppColors.backgroundWhite
-                    : AppColors.primaryGreen,
-                side: isPrimary
-                    ? BorderSide.none
-                    : const BorderSide(
-                        color: AppColors.primaryGreen, width: 1.5),
-                textStyle:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            child: icon != null
-                ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(icon),
-                    const SizedBox(width: 10),
-                    Text(label)
-                  ])
-                : Text(label)));
   }
 }

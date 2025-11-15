@@ -4,31 +4,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // --- IP Y URL BASE ---
-  static const String _host = '192.168.1.4'; // Tu IP
+  static const String _host = '192.168.1.4';
   static const String baseUrl = 'http://$_host:8000/api/';
 
   // --- SINGLETON SETUP ---
   static final ApiService _instance = ApiService._internal();
-  factory ApiService() {
-    return _instance;
-  }
+  factory ApiService() => _instance;
   ApiService._internal();
-  // ---------------------
 
   late SharedPreferences _prefs;
-  Map<String, dynamic> userData =
-      {}; // Caché en memoria para los datos del usuario
+  Map<String, dynamic> userData = {};
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    // Al iniciar, cargamos los datos del usuario si existen
     final userJson = _prefs.getString('userData');
     if (userJson != null) {
       userData = jsonDecode(userJson);
     }
   }
 
-  // --- HELPERS INTERNOS ---
+  // --- HELPERS ---
   String? _getAccessToken() => _prefs.getString('access_token');
   String? _getRefreshToken() => _prefs.getString('refresh_token');
 
@@ -45,20 +40,71 @@ class ApiService {
   }
 
   Future<void> _saveUserData(Map<String, dynamic> data) async {
-    // Guardamos los datos del usuario en la caché y en SharedPreferences
     userData = {
       'id': data['id'],
       'email': data['email'],
       'first_name': data['first_name'],
       'last_name': data['last_name'],
       'role': data['role'],
-      'level': data['level'],
+      'level': data['level'] ?? 1,
+      'xp': data['xp'] ?? 0,
     };
     await _prefs.setString('userData', jsonEncode(userData));
   }
 
-  // --- MÉTODOS PÚBLICOS ---
+  Future<Map<String, dynamic>> _makeAuthenticatedRequest(
+    String method,
+    String endpoint, {
+    Map<String, dynamic>? body,
+  }) async {
+    final token = _getAccessToken();
+    if (token == null) throw Exception('No autenticado');
 
+    final uri = Uri.parse('$baseUrl$endpoint');
+    http.Response response;
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    switch (method.toUpperCase()) {
+      case 'GET':
+        response = await http.get(uri, headers: headers);
+        break;
+      case 'POST':
+        response = await http.post(
+          uri,
+          headers: headers,
+          body: body != null ? jsonEncode(body) : null,
+        );
+        break;
+      case 'PATCH':
+        response = await http.patch(
+          uri,
+          headers: headers,
+          body: body != null ? jsonEncode(body) : null,
+        );
+        break;
+      case 'DELETE':
+        response = await http.delete(uri, headers: headers);
+        break;
+      default:
+        throw Exception('Método HTTP no soportado');
+    }
+
+    // Si el token expiró, intentar refrescar
+    if (response.statusCode == 401) {
+      bool refreshed = await refreshToken();
+      if (refreshed) {
+        return await _makeAuthenticatedRequest(method, endpoint, body: body);
+      }
+    }
+
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+
+  // --- AUTENTICACIÓN ---
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -68,8 +114,7 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': email,
-        'password1': password, // El body que tu backend espera
-        'password2': password,
+        'password': password,
       }),
     );
 
@@ -121,41 +166,136 @@ class ApiService {
         return true;
       }
     } catch (e) {
-      // No hacer nada, simplemente fallar
+      // Ignorar error
     }
     await _clearSession();
     return false;
   }
 
   Future<Map<String, dynamic>> getProfile() async {
-    final token = _getAccessToken();
-    if (token == null) return {'detail': 'No autenticado'};
-
-    final response = await http.get(
-      Uri.parse('${baseUrl}auth/profile/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 401) {
-      bool refreshed = await refreshToken();
-      if (refreshed) return await getProfile();
-    }
-
-    final data = jsonDecode(utf8.decode(response.bodyBytes));
-    if (response.statusCode == 200) {
+    final data = await _makeAuthenticatedRequest('GET', 'auth/profile/');
+    if (data.containsKey('id')) {
       await _saveUserData(data);
     }
     return data;
   }
 
+  Future<Map<String, dynamic>> updateProfile({
+    String? telefono,
+    String? localidad,
+    List<String>? gustos,
+  }) async {
+    return await _makeAuthenticatedRequest(
+      'PATCH',
+      'auth/profile/',
+      body: {
+        if (telefono != null) 'telefono': telefono,
+        if (localidad != null) 'localidad': localidad,
+        if (gustos != null) 'gustos': gustos,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> addXp(int xpAmount) async {
+    return await _makeAuthenticatedRequest(
+      'POST',
+      'auth/add-xp/',
+      body: {'xp_amount': xpAmount},
+    );
+  }
+
+  // --- CURSOS ---
+  Future<List<dynamic>> getAvailableCourses() async {
+    final data = await _makeAuthenticatedRequest('GET', 'courses/available/');
+    return data is List ? data as List<dynamic> : [];
+  }
+
+  Future<Map<String, dynamic>> createCourse({
+    required String title,
+    required String description,
+  }) async {
+    return await _makeAuthenticatedRequest(
+      'POST',
+      'courses/create/',
+      body: {
+        'title': title,
+        'description': description,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> enrollCourse(int courseId) async {
+    return await _makeAuthenticatedRequest(
+      'POST',
+      'courses/enroll/',
+      body: {'course_id': courseId},
+    );
+  }
+
+  // --- QUIZZES ---
+  Future<List<dynamic>> getAvailableQuizzes() async {
+    final data = await _makeAuthenticatedRequest('GET', 'quizzes/available/');
+    return data is List ? data as List<dynamic> : [];
+  }
+
+  Future<Map<String, dynamic>> createQuiz({
+    required int courseId,
+    required String title,
+    required String description,
+  }) async {
+    return await _makeAuthenticatedRequest(
+      'POST',
+      'quizzes/create/',
+      body: {
+        'course': courseId,
+        'title': title,
+        'description': description,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> submitQuizAttempt({
+    required int quizId,
+    required int score,
+  }) async {
+    return await _makeAuthenticatedRequest(
+      'POST',
+      'quizzes/attempt/',
+      body: {
+        'quiz': quizId,
+        'score': score,
+      },
+    );
+  }
+
+  // --- PROGRESO ---
+  Future<List<dynamic>> getProgress() async {
+    final data = await _makeAuthenticatedRequest('GET', 'progress/');
+    return data is List ? data as List<dynamic> : [];
+  }
+
+  Future<Map<String, dynamic>> getCourseProgress(int courseId) async {
+    return await _makeAuthenticatedRequest('GET', 'progress/$courseId/');
+  }
+
+  // --- UTILIDADES ---
   Future<void> logout() async {
     await _clearSession();
   }
 
   Future<bool> isLoggedIn() async {
     return _getAccessToken() != null;
+  }
+
+  bool isTeacher() {
+    return userData['role'] == 'teacher';
+  }
+
+  int getUserLevel() {
+    return userData['level'] ?? 1;
+  }
+
+  int getUserXp() {
+    return userData['xp'] ?? 0;
   }
 }
