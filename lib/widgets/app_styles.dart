@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Paleta de colores coherente con el frontend web
+/// Paleta de colores coherente con Yonna Akademia
 class AppColors {
-  // Colores principales
-  static const Color primaryOrange = Color(0xFFFF914D); // Naranja principal
-  static const Color primaryBlue = Color(0xFF60AB90); // Azul yonna
+  // Colores principales de Yonna
+  static const Color primaryOrange = Color(0xFFFF8025); // Naranja Yonna
+  static const Color primaryBlue = Color(0xFF60AB90); // Verde Yonna
   static const Color accentGreen =
-      Color.fromARGB(255, 34, 179, 126); // Verde Wayuu (mantener)
+      Color(0xFF60AB90); // Mismo verde para consistencia
 
   // Colores de fondo
   static const Color backgroundWhite = Color(0xFFFFFFFF);
@@ -25,13 +25,20 @@ class AppColors {
 
   // Gradientes
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primaryOrange, Color(0xFFFF7A29)],
+    colors: [Color(0xFFFF8025), Color(0xFFFF914D)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient blueGradient = LinearGradient(
-    colors: [primaryBlue, Color.fromARGB(255, 0, 128, 107)],
+    colors: [Color(0xFF60AB90), Color(0xFF4A9C7F)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Nuevos gradientes con los colores Yonna
+  static const LinearGradient yonnaGradient = LinearGradient(
+    colors: [Color(0xFF60AB90), Color(0xFFFF8025)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

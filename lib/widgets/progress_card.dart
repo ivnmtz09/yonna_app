@@ -31,13 +31,13 @@ class ProgressCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      progress.courseName,
+                      progress.courseTitle,
                       style: AppTextStyles.h4,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (progress.isCompleted)
+                  if (progress.courseCompleted)
                     const Icon(
                       Icons.celebration,
                       color: AppColors.successGreen,
@@ -53,7 +53,7 @@ class ProgressCard extends StatelessWidget {
                     style: AppTextStyles.bodySmall,
                   ),
                   Text(
-                    '${progress.completionPercentage.toStringAsFixed(0)}%',
+                    '${progress.percentage.toStringAsFixed(0)}%',
                     style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryOrange,
@@ -65,7 +65,7 @@ class ProgressCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: AppStyles.smallBorderRadius,
                 child: LinearProgressIndicator(
-                  value: progress.completionPercentage / 100,
+                  value: progress.percentage / 100,
                   minHeight: 8,
                   backgroundColor: AppColors.backgroundGray,
                   valueColor: const AlwaysStoppedAnimation<Color>(
@@ -92,7 +92,7 @@ class ProgressCard extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    '${progress.quizzesCompleted}/${progress.totalQuizzes} quizzes',
+                    '${progress.completedQuizzes}/${progress.totalQuizzes} quizzes',
                     style: AppTextStyles.bodySmall,
                   ),
                 ],

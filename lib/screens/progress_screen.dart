@@ -51,14 +51,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
           final totalCourses = provider.progress.length;
           final completedCourses =
-              provider.progress.where((p) => p.isCompleted).length;
+              provider.progress.where((p) => p.courseCompleted).length;
           final totalXp =
               provider.progress.fold(0, (sum, p) => sum + p.xpEarned);
-          final avgCompletion = provider.progress.fold(
-                0.0,
-                (sum, p) => sum + p.completionPercentage,
-              ) /
-              totalCourses;
+          final avgCompletion = totalCourses > 0
+              ? provider.progress.fold(
+                  0.0,
+                  (sum, p) => sum + p.percentage,
+                ) /
+                totalCourses
+              : 0.0;
 
           return RefreshIndicator(
             onRefresh: () => provider.loadProgress(),
@@ -273,7 +275,7 @@ class ProgressDetailSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(progress.courseName, style: AppTextStyles.h2),
+                  Text(progress.courseTitle, style: AppTextStyles.h2),
                   const SizedBox(height: AppStyles.spacingL),
 
                   // Progreso visual
@@ -292,7 +294,7 @@ class ProgressDetailSheet extends StatelessWidget {
                             Text('Progreso del curso',
                                 style: AppTextStyles.bodyMedium),
                             Text(
-                              '${progress.completionPercentage.toStringAsFixed(0)}%',
+                              '${progress.percentage.toStringAsFixed(0)}%',
                               style: AppTextStyles.h4.copyWith(
                                 color: AppColors.primaryOrange,
                               ),
@@ -303,7 +305,7 @@ class ProgressDetailSheet extends StatelessWidget {
                         ClipRRect(
                           borderRadius: AppStyles.smallBorderRadius,
                           child: LinearProgressIndicator(
-                            value: progress.completionPercentage / 100,
+                            value: progress.percentage / 100,
                             minHeight: 16,
                             backgroundColor: AppColors.backgroundWhite,
                             valueColor: const AlwaysStoppedAnimation<Color>(
@@ -324,7 +326,7 @@ class ProgressDetailSheet extends StatelessWidget {
                     icon: Icons.quiz_outlined,
                     label: 'Quizzes completados',
                     value:
-                        '${progress.quizzesCompleted}/${progress.totalQuizzes}',
+                        '${progress.completedQuizzes}/${progress.totalQuizzes}',
                   ),
                   const Divider(height: AppStyles.spacingL),
 
@@ -337,22 +339,22 @@ class ProgressDetailSheet extends StatelessWidget {
 
                   _buildStatRow(
                     icon: Icons.calendar_today,
-                    label: 'Inscrito desde',
-                    value: _formatDate(progress.enrolledAt),
+                    label: 'Última actualización',
+                    value: _formatDate(progress.updatedAt),
                   ),
 
-                  if (progress.lastActivity != null) ...[
+                  if (progress.completedAt != null) ...[
                     const Divider(height: AppStyles.spacingL),
                     _buildStatRow(
-                      icon: Icons.access_time,
-                      label: 'Última actividad',
-                      value: _formatDate(progress.lastActivity),
+                      icon: Icons.check_circle,
+                      label: 'Completado el',
+                      value: _formatDate(progress.completedAt!),
                     ),
                   ],
 
                   const SizedBox(height: AppStyles.spacingL),
 
-                  if (progress.isCompleted)
+                  if (progress.courseCompleted)
                     Container(
                       width: double.infinity,
                       padding: AppStyles.cardPadding,

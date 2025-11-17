@@ -1,9 +1,10 @@
 // lib/widgets/quiz_detail_sheet.dart
 import 'package:flutter/material.dart';
 import 'app_styles.dart';
+import '../models/quiz_model.dart';
 
 class QuizDetailSheet extends StatelessWidget {
-  final dynamic quiz;
+  final QuizModel quiz;
 
   const QuizDetailSheet({Key? key, required this.quiz}) : super(key: key);
 
@@ -38,7 +39,7 @@ class QuizDetailSheet extends StatelessWidget {
                   Text(quiz.title, style: AppTextStyles.h2),
                   const SizedBox(height: AppStyles.spacingS),
                   Text(
-                    quiz.courseName,
+                    quiz.courseTitle,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.primaryBlue,
                     ),
@@ -86,7 +87,7 @@ class QuizDetailSheet extends StatelessWidget {
           _buildInfoRow(
             Icons.question_answer_outlined,
             'Preguntas',
-            '${quiz.totalQuestions}',
+            '${quiz.questionCount}',
           ),
           const Divider(height: AppStyles.spacingL),
           _buildInfoRow(
@@ -94,12 +95,12 @@ class QuizDetailSheet extends StatelessWidget {
             'Puntaje mínimo',
             '${quiz.passingScore}%',
           ),
-          if (quiz.lastScore != null) ...[
+          if (quiz.bestScore > 0) ...[
             const Divider(height: AppStyles.spacingL),
             _buildInfoRow(
               Icons.emoji_events_outlined,
               'Tu mejor puntaje',
-              '${quiz.lastScore}%',
+              '${quiz.bestScore.toStringAsFixed(1)}%',
               color:
                   quiz.isPassed ? AppColors.successGreen : AppColors.errorRed,
             ),

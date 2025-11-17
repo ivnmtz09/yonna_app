@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/app_styles.dart';
-import 'dart:math';
+import '../models/quiz_model.dart';
+import 'dart:async';
 
 class QuizAttemptScreen extends StatefulWidget {
-  final dynamic quiz;
+  final QuizModel quiz;
 
   const QuizAttemptScreen({Key? key, required this.quiz}) : super(key: key);
 
@@ -15,33 +16,67 @@ class QuizAttemptScreen extends StatefulWidget {
 
 class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
   int _currentQuestionIndex = 0;
-  final Map<int, String> _answers = {};
+  final Map<String, String> _answers = {}; // question_id: answer
   bool _isSubmitting = false;
-
-  // Preguntas de ejemplo (en producción vendrían del backend)
-  late final List<Map<String, dynamic>> _questions;
+  bool _isLoading = true;
+  List<QuestionModel> _questions = [];
+  Timer? _timer;
+  int _timeElapsed = 0; // en segundos
 
   @override
   void initState() {
     super.initState();
-    _questions = _generateSampleQuestions();
+    _loadQuizQuestions();
+    _startTimer();
   }
 
-  List<Map<String, dynamic>> _generateSampleQuestions() {
-    return List.generate(10, (index) {
-      return {
-        'id': index + 1,
-        'question':
-            'Pregunta ${index + 1}: ¿Cómo se dice "agua" en Wayuunaiki?',
-        'options': [
-          'Wüin',
-          'Kashi',
-          'Palaa',
-          'Juyá',
-        ]..shuffle(Random()),
-        'correctAnswer': 'Wüin',
-      };
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _timeElapsed++;
+        });
+      }
     });
+  }
+
+  Future<void> _loadQuizQuestions() async {
+    try {
+      final provider = context.read<AppProvider>();
+      final quizData = await provider.apiService.getQuizDetail(widget.quiz.id);
+      
+      if (mounted) {
+        setState(() {
+          if (quizData['questions'] != null) {
+            _questions = (quizData['questions'] as List)
+                .map((q) => QuestionModel.fromJson(q))
+                .toList();
+          } else {
+            _questions = [];
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando preguntas: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar las preguntas: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
   }
 
   void _nextQuestion() {
@@ -69,31 +104,28 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
     }
 
     setState(() => _isSubmitting = true);
+    _timer?.cancel();
 
-    // Calcular puntaje
-    int correctAnswers = 0;
-    for (var i = 0; i < _questions.length; i++) {
-      if (_answers[i] == _questions[i]['correctAnswer']) {
-        correctAnswers++;
-      }
-    }
-
-    final score = ((correctAnswers / _questions.length) * 100).round();
-
-    // Enviar resultado al backend
+    // Enviar respuestas al backend
     final provider = context.read<AppProvider>();
-    final result = await provider.submitQuizAttempt(widget.quiz.id, score);
+    final result = await provider.submitQuiz(
+      quizId: widget.quiz.id,
+      answers: _answers,
+      timeTaken: _timeElapsed,
+    );
 
     setState(() => _isSubmitting = false);
 
     if (!mounted) return;
 
     if (result != null) {
+      final attempt = QuizAttemptModel.fromJson(result['attempt'] ?? result);
       _showResultDialog(
-        score: score,
-        passed: result['passed'] ?? false,
+        score: attempt.score,
+        passed: attempt.passed,
         xpGained: result['xp_gained'] ?? 0,
         newLevel: result['current_level'],
+        detailedAnswers: attempt.answers,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,11 +137,18 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
     }
   }
 
+  String _formatTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
   void _showResultDialog({
-    required int score,
+    required double score,
     required bool passed,
     required int xpGained,
     int? newLevel,
+    Map<String, dynamic>? detailedAnswers,
   }) {
     showDialog(
       context: context,
@@ -135,14 +174,14 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
             ),
             const SizedBox(height: AppStyles.spacingM),
             Text(
-              'Tu puntaje: $score%',
+              'Tu puntaje: ${score.toStringAsFixed(1)}%',
               style: AppTextStyles.h3,
             ),
             const SizedBox(height: AppStyles.spacingS),
             Text(
               passed
                   ? 'Has aprobado el quiz'
-                  : 'Puntaje mínimo: ${widget.quiz.passingScore}%',
+                  : 'Puntaje mínimo: ${widget.quiz.passingScore.toStringAsFixed(0)}%',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.lightText,
               ),
@@ -201,6 +240,121 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                 ),
               ),
             ],
+            if (detailedAnswers != null && detailedAnswers.isNotEmpty) ...[
+              const SizedBox(height: AppStyles.spacingL),
+              Text(
+                'Revisión de respuestas',
+                style: AppTextStyles.h4,
+              ),
+              const SizedBox(height: AppStyles.spacingM),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: List.generate(_questions.length, (index) {
+                      final question = _questions[index];
+                      final questionId = question.id.toString();
+                      final answerData = detailedAnswers[questionId];
+                      if (answerData == null) return const SizedBox.shrink();
+                      
+                      final isCorrect = answerData['is_correct'] ?? false;
+                      final userAnswer = answerData['user_answer'] ?? '';
+                      final correctAnswer = answerData['correct_answer'] ?? '';
+                      final explanation = answerData['explanation'] ?? '';
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppStyles.spacingM),
+                        padding: AppStyles.cardPadding,
+                        decoration: BoxDecoration(
+                          color: (isCorrect
+                                  ? AppColors.successGreen
+                                  : AppColors.errorRed)
+                              .withOpacity(0.1),
+                          borderRadius: AppStyles.standardBorderRadius,
+                          border: Border.all(
+                            color: isCorrect
+                                ? AppColors.successGreen
+                                : AppColors.errorRed,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  isCorrect
+                                      ? Icons.check_circle
+                                      : Icons.cancel,
+                                  color: isCorrect
+                                      ? AppColors.successGreen
+                                      : AppColors.errorRed,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: AppStyles.spacingS),
+                                Expanded(
+                                  child: Text(
+                                    question.text,
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppStyles.spacingS),
+                            Text(
+                              'Tu respuesta: $userAnswer',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.lightText,
+                              ),
+                            ),
+                            if (!isCorrect) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Respuesta correcta: $correctAnswer',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.successGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            if (explanation.isNotEmpty) ...[
+                              const SizedBox(height: AppStyles.spacingS),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundGray,
+                                  borderRadius: AppStyles.smallBorderRadius,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.lightbulb_outline,
+                                      size: 16,
+                                      color: AppColors.primaryOrange,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        explanation,
+                                        style: AppTextStyles.bodySmall,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -229,6 +383,49 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.backgroundGray,
+        appBar: AppBar(
+          backgroundColor: AppColors.primaryBlue,
+          title: Text(widget.quiz.title),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_questions.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.backgroundGray,
+        appBar: AppBar(
+          backgroundColor: AppColors.primaryBlue,
+          title: Text(widget.quiz.title),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: AppColors.errorRed),
+              const SizedBox(height: 16),
+              Text(
+                'No se pudieron cargar las preguntas',
+                style: AppTextStyles.h4,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: AppStyles.primaryButton,
+                child: const Text('Volver'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final question = _questions[_currentQuestionIndex];
     final progress = (_currentQuestionIndex + 1) / _questions.length;
 
@@ -282,6 +479,13 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                           color: AppColors.lightText,
                         ),
                       ),
+                      if (widget.quiz.hasTimeLimit)
+                        Text(
+                          'Tiempo: ${_formatTime(_timeElapsed)}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.lightText,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: AppStyles.spacingS),
@@ -312,17 +516,17 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                       padding: AppStyles.cardPadding,
                       decoration: AppStyles.cardDecoration,
                       child: Text(
-                        question['question'],
+                        question.text,
                         style: AppTextStyles.h4,
                       ),
                     ),
                     const SizedBox(height: AppStyles.spacingL),
                     ...List.generate(
-                      question['options'].length,
+                      question.options.length,
                       (index) {
-                        final option = question['options'][index];
+                        final option = question.options[index];
                         final isSelected =
-                            _answers[_currentQuestionIndex] == option;
+                            _answers[question.id.toString()] == option;
 
                         return Padding(
                           padding:
@@ -330,7 +534,7 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                           child: InkWell(
                             onTap: () {
                               setState(() {
-                                _answers[_currentQuestionIndex] = option;
+                                _answers[question.id.toString()] = option;
                               });
                             },
                             borderRadius: AppStyles.standardBorderRadius,

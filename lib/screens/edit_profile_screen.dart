@@ -34,6 +34,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final user = context.read<AppProvider>().user;
     if (user != null) {
+      // Usar los getters del UserModel que acceden al profile
       _telefonoCtrl.text = user.telefono ?? '';
       _localidadCtrl.text = user.localidad ?? '';
       if (user.gustos != null) {

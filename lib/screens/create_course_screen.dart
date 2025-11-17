@@ -30,8 +30,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
     final provider = context.read<AppProvider>();
     final success = await provider.createCourse(
-      _titleCtrl.text.trim(),
-      _descriptionCtrl.text.trim(),
+      title: _titleCtrl.text.trim(),
+      description: _descriptionCtrl.text.trim(),
     );
 
     setState(() => _isLoading = false);

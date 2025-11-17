@@ -18,6 +18,10 @@ import 'screens/create_course_screen.dart';
 import 'screens/create_quiz_screen.dart';
 import 'screens/quiz_attempt_screen.dart';
 import 'screens/edit_profile_screen.dart';
+import 'screens/manage_users_screen.dart';
+import 'screens/admin_stats_screen.dart';
+import 'screens/leaderboard_screen.dart';
+import 'models/quiz_model.dart';
 
 // Styles
 import 'widgets/app_styles.dart';
@@ -59,52 +63,46 @@ class MyApp extends StatelessWidget {
             seedColor: AppColors.primaryOrange,
             primary: AppColors.primaryOrange,
             secondary: AppColors.primaryBlue,
+            background: AppColors.backgroundGray,
           ),
           useMaterial3: true,
+          fontFamily: 'Roboto',
         ),
         debugShowCheckedModeBanner: false,
         initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/welcome': (context) => const WelcomeScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/home': (context) => const EnhancedHomeScreen(),
+          '/profile': (context) => const ProfileScreen(),
+          '/edit-profile': (context) => const EditProfileScreen(),
+          '/courses': (context) => const CoursesScreen(),
+          '/quizzes': (context) => const QuizzesScreen(),
+          '/progress': (context) => const ProgressScreen(),
+          '/notifications': (context) => const NotificationsScreen(),
+          '/create-course': (context) => const CreateCourseScreen(),
+          '/create-quiz': (context) => const CreateQuizScreen(),
+          '/leaderboard': (context) => const LeaderboardScreen(),
+          '/manage-users': (context) => const ManageUsersScreen(),
+          '/admin-stats': (context) => const AdminStatsScreen(),
+        },
         onGenerateRoute: (settings) {
-          switch (settings.name) {
-            case '/':
-              return MaterialPageRoute(builder: (_) => const SplashScreen());
-            case '/welcome':
-              return MaterialPageRoute(builder: (_) => const WelcomeScreen());
-            case '/login':
-              return MaterialPageRoute(builder: (_) => const LoginScreen());
-            case '/register':
-              return MaterialPageRoute(builder: (_) => const RegisterScreen());
-            case '/home':
-              return MaterialPageRoute(
-                  builder: (_) => const EnhancedHomeScreen());
-            case '/profile':
-              return MaterialPageRoute(builder: (_) => const ProfileScreen());
-            case '/edit-profile':
-              return MaterialPageRoute(
-                  builder: (_) => const EditProfileScreen());
-            case '/courses':
-              return MaterialPageRoute(builder: (_) => const CoursesScreen());
-            case '/quizzes':
-              return MaterialPageRoute(builder: (_) => const QuizzesScreen());
-            case '/progress':
-              return MaterialPageRoute(builder: (_) => const ProgressScreen());
-            case '/notifications':
-              return MaterialPageRoute(
-                  builder: (_) => const NotificationsScreen());
-            case '/create-course':
-              return MaterialPageRoute(
-                  builder: (_) => const CreateCourseScreen());
-            case '/create-quiz':
-              return MaterialPageRoute(
-                  builder: (_) => const CreateQuizScreen());
-            case '/quiz-attempt':
-              final quiz = settings.arguments;
+          if (settings.name == '/quiz-attempt') {
+            final quiz = settings.arguments;
+            if (quiz is QuizModel) {
               return MaterialPageRoute(
                 builder: (_) => QuizAttemptScreen(quiz: quiz),
               );
-            default:
-              return MaterialPageRoute(builder: (_) => const SplashScreen());
+            }
           }
+          return null;
+        },
+        onUnknownRoute: (settings) {
+          return MaterialPageRoute(
+            builder: (_) => const SplashScreen(),
+          );
         },
       ),
     );

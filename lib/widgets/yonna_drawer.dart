@@ -110,6 +110,15 @@ class YonnaDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.emoji_events_outlined,
+                    color: AppColors.primaryOrange),
+                title: Text('Clasificación', style: AppTextStyles.bodyMedium),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/leaderboard');
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.notifications_outlined,
                     color: AppColors.primaryOrange),
                 title: Text('Notificaciones', style: AppTextStyles.bodyMedium),
@@ -118,14 +127,14 @@ class YonnaDrawer extends StatelessWidget {
                   Navigator.pushNamed(context, '/notifications');
                 },
               ),
-              if (provider.isTeacher) ...[
+              if (provider.canManage) ...[
                 const Divider(
                     color: AppColors.primaryOrange, indent: 16, endIndent: 16),
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
-                    'SABEDOR',
+                    provider.isAdmin ? 'ADMINISTRADOR' : 'MODERADOR',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.lightText,
                       fontWeight: FontWeight.bold,
@@ -150,6 +159,28 @@ class YonnaDrawer extends StatelessWidget {
                     Navigator.pushNamed(context, '/create-quiz');
                   },
                 ),
+                if (provider.isAdmin) ...[
+                  ListTile(
+                    leading: const Icon(Icons.people_outline,
+                        color: AppColors.primaryOrange),
+                    title: Text('Gestionar Usuarios',
+                        style: AppTextStyles.bodyMedium),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/manage-users');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bar_chart,
+                        color: AppColors.primaryOrange),
+                    title:
+                        Text('Estadísticas', style: AppTextStyles.bodyMedium),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/admin-stats');
+                    },
+                  ),
+                ],
               ],
               const Divider(
                   color: AppColors.primaryOrange, indent: 16, endIndent: 16),

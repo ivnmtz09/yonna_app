@@ -24,7 +24,7 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
         backgroundColor: AppColors.primaryBlue,
         title: const Text('Quizzes'),
         actions: [
-          if (context.watch<AppProvider>().isTeacher)
+          if (context.watch<AppProvider>().isModerator)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () => Navigator.pushNamed(context, '/create-quiz'),

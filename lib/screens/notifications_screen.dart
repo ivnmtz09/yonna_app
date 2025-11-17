@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../models/notification_model.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/empty_state.dart';
 
@@ -10,132 +13,122 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Notificaciones de ejemplo (en producción vendrían del backend)
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'id': 1,
-      'type': 'level_up',
-      'title': '¡Subiste de nivel!',
-      'message': 'Has alcanzado el nivel 2. ¡Sigue así!',
-      'time': DateTime.now().subtract(const Duration(hours: 2)),
-      'isRead': false,
-    },
-    {
-      'id': 2,
-      'type': 'new_course',
-      'title': 'Nuevo curso disponible',
-      'message': 'El curso "Wayuunaiki Avanzado" ya está disponible',
-      'time': DateTime.now().subtract(const Duration(days: 1)),
-      'isRead': false,
-    },
-    {
-      'id': 3,
-      'type': 'quiz_passed',
-      'title': 'Quiz aprobado',
-      'message': 'Aprobaste el quiz "Saludos básicos" con 95%',
-      'time': DateTime.now().subtract(const Duration(days: 2)),
-      'isRead': true,
-    },
-    {
-      'id': 4,
-      'type': 'achievement',
-      'title': 'Nueva insignia',
-      'message': 'Desbloqueaste la insignia "Estudiante dedicado"',
-      'time': DateTime.now().subtract(const Duration(days: 3)),
-      'isRead': true,
-    },
-  ];
-
-  void _markAsRead(int id) {
-    setState(() {
-      final notification = _notifications.firstWhere((n) => n['id'] == id);
-      notification['isRead'] = true;
-    });
-  }
-
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification['isRead'] = true;
-      }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().loadNotifications();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => !n['isRead']).length;
-
     return Scaffold(
       backgroundColor: AppColors.backgroundGray,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         title: const Text('Notificaciones'),
         actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: Text(
-                'Marcar todas',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.whiteText,
-                ),
-              ),
-            ),
+          Consumer<AppProvider>(
+            builder: (context, provider, child) {
+              if (provider.unreadNotificationsCount > 0) {
+                return TextButton(
+                  onPressed: () => provider.markAllNotificationsAsRead(),
+                  child: Text(
+                    'Marcar todas',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.whiteText,
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? const EmptyState(
+      body: Consumer<AppProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading && provider.notifications.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primaryOrange,
+              ),
+            );
+          }
+
+          if (provider.notifications.isEmpty) {
+            return const EmptyState(
               icon: Icons.notifications_none,
               title: 'Sin notificaciones',
               message: 'No tienes notificaciones en este momento',
-            )
-          : Column(
-              children: [
-                if (unreadCount > 0)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: AppColors.primaryOrange.withOpacity(0.1),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.notifications_active,
+            );
+          }
+
+          final notifications = provider.notifications;
+          final unreadCount = provider.unreadNotificationsCount;
+
+          return Column(
+            children: [
+              if (unreadCount > 0)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.primaryOrange.withOpacity(0.1),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.notifications_active,
+                        color: AppColors.primaryOrange,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppStyles.spacingS),
+                      Text(
+                        '$unreadCount ${unreadCount == 1 ? 'notificación nueva' : 'notificaciones nuevas'}',
+                        style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.primaryOrange,
-                          size: 20,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: AppStyles.spacingS),
-                        Text(
-                          '$unreadCount ${unreadCount == 1 ? 'notificación nueva' : 'notificaciones nuevas'}',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.primaryOrange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                Expanded(
+                ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => provider.loadNotifications(),
+                  color: AppColors.primaryOrange,
                   child: ListView.separated(
                     padding: AppStyles.screenPadding,
-                    itemCount: _notifications.length,
+                    itemCount: notifications.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: AppStyles.spacingM),
                     itemBuilder: (context, index) {
-                      final notification = _notifications[index];
-                      return _buildNotificationCard(notification);
+                      final notification = notifications[index];
+                      return _buildNotificationCard(notification, provider);
                     },
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildNotificationCard(Map<String, dynamic> notification) {
-    final isRead = notification['isRead'] as bool;
-    final type = notification['type'] as String;
+  Widget _buildNotificationCard(
+    NotificationModel notification,
+    AppProvider provider,
+  ) {
+    final isRead = notification.isRead;
 
     return InkWell(
-      onTap: () => _markAsRead(notification['id']),
+      onTap: () {
+        if (!isRead) {
+          provider.markNotificationAsRead(notification.id);
+        }
+        // Navegar a contenido relacionado si existe
+        _handleNotificationTap(notification, context);
+      },
       borderRadius: AppStyles.standardBorderRadius,
       child: Container(
         padding: AppStyles.cardPadding,
@@ -156,12 +149,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _getNotificationColor(type).withOpacity(0.1),
+                color:
+                    _getNotificationColor(notification.type).withOpacity(0.1),
                 borderRadius: AppStyles.smallBorderRadius,
               ),
               child: Icon(
-                _getNotificationIcon(type),
-                color: _getNotificationColor(type),
+                _getNotificationIcon(notification.type),
+                color: _getNotificationColor(notification.type),
                 size: 24,
               ),
             ),
@@ -174,7 +168,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          notification['title'],
+                          notification.title,
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: isRead
@@ -196,14 +190,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    notification['message'],
+                    notification.message,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.lightText,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatTime(notification['time']),
+                    _formatTime(notification.createdAt),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.lightText.withOpacity(0.7),
                       fontSize: 11,
@@ -218,16 +212,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  void _handleNotificationTap(
+      NotificationModel notification, BuildContext context) {
+    // Navegar a contenido relacionado según el tipo de notificación
+    if (notification.relatedCourseId != null) {
+      // Navegar al curso
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailScreen(courseId: notification.relatedCourseId!)));
+    } else if (notification.relatedQuizId != null) {
+      // Navegar al quiz
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => QuizScreen(quizId: notification.relatedQuizId!)));
+    }
+    // Para notificaciones de nivel up, quiz_passed, etc., no hacer nada o mostrar detalles
+  }
+
   IconData _getNotificationIcon(String type) {
     switch (type) {
       case 'level_up':
         return Icons.trending_up;
       case 'new_course':
         return Icons.school_outlined;
-      case 'quiz_passed':
-        return Icons.check_circle_outline;
+      case 'quiz_result':
+      case 'progress_update':
+        return Icons.assignment_turned_in_outlined;
       case 'achievement':
+      case 'reward_unlocked':
         return Icons.emoji_events_outlined;
+      case 'study_streak':
+        return Icons.local_fire_department_outlined;
+      case 'new_quiz':
+        return Icons.quiz_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -238,11 +251,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'level_up':
         return AppColors.primaryOrange;
       case 'new_course':
+      case 'new_quiz':
         return AppColors.primaryBlue;
-      case 'quiz_passed':
+      case 'quiz_result':
+      case 'progress_update':
         return AppColors.successGreen;
       case 'achievement':
+      case 'reward_unlocked':
         return AppColors.warningYellow;
+      case 'study_streak':
+        return AppColors.errorRed;
       default:
         return AppColors.primaryOrange;
     }
@@ -265,3 +283,4 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 }
+

@@ -1,10 +1,11 @@
+// lib/screens/courses_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/course_card.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/course_detail_sheet.dart';
+import '../widgets/course_detail_sheet.dart'; // ⬅️ IMPORTAR
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -24,7 +25,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         backgroundColor: AppColors.primaryBlue,
         title: const Text('Cursos'),
         actions: [
-          if (context.watch<AppProvider>().isTeacher)
+          if (context.watch<AppProvider>().canManage)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () => Navigator.pushNamed(context, '/create-course'),

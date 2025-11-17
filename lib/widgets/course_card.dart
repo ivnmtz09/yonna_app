@@ -39,7 +39,7 @@ class CourseCard extends StatelessWidget {
                       borderRadius: AppStyles.smallBorderRadius,
                     ),
                     child: Text(
-                      'Nivel ${course.level}',
+                      'Nivel ${course.difficulty}',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.primaryOrange,
                         fontWeight: FontWeight.w600,
@@ -81,7 +81,7 @@ class CourseCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${course.enrolledCount} inscritos',
+                    '${course.enrolledStudentsCount} inscritos',
                     style: AppTextStyles.bodySmall,
                   ),
                 ],

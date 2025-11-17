@@ -14,8 +14,16 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
+  
   int? _selectedCourseId;
+  String _difficulty = 'medium';
+  double _passingScore = 70.0;
+  int _xpReward = 50;
+  int _timeLimit = 10;
+  int _maxAttempts = 3;
+  
   bool _isLoading = false;
+  final List<QuestionFormData> _questions = [];
 
   @override
   void initState() {
@@ -29,7 +37,39 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _descriptionCtrl.dispose();
+    for (var q in _questions) {
+      q.textCtrl.dispose();
+      for (var opt in q.optionsCtrls) {
+        opt.dispose();
+      }
+      q.correctAnswerCtrl?.dispose();
+      q.explanationCtrl?.dispose();
+    }
     super.dispose();
+  }
+
+  void _addQuestion() {
+    setState(() {
+      _questions.add(QuestionFormData(
+        order: _questions.length + 1,
+      ));
+    });
+  }
+
+  void _removeQuestion(int index) {
+    setState(() {
+      _questions[index].textCtrl.dispose();
+      for (var opt in _questions[index].optionsCtrls) {
+        opt.dispose();
+      }
+      _questions[index].correctAnswerCtrl?.dispose();
+      _questions[index].explanationCtrl?.dispose();
+      _questions.removeAt(index);
+      // Reordenar
+      for (int i = 0; i < _questions.length; i++) {
+        _questions[i].order = i + 1;
+      }
+    });
   }
 
   Future<void> _createQuiz() async {
@@ -44,15 +84,114 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       return;
     }
 
+    if (_questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Agrega al menos una pregunta'),
+          backgroundColor: AppColors.warningYellow,
+        ),
+      );
+      return;
+    }
+
+    // Validar todas las preguntas
+    for (int i = 0; i < _questions.length; i++) {
+      final q = _questions[i];
+      if (q.textCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('La pregunta ${i + 1} debe tener texto'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+        return;
+      }
+
+      if (q.questionType == 'multiple_choice' || q.questionType == 'true_false') {
+        if (q.optionsCtrls.length < 2) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('La pregunta ${i + 1} debe tener al menos 2 opciones'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+          return;
+        }
+
+        final options = q.optionsCtrls.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+        if (options.length < 2) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('La pregunta ${i + 1} debe tener al menos 2 opciones válidas'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+          return;
+        }
+
+        if (q.correctAnswerCtrl?.text.trim().isEmpty ?? true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('La pregunta ${i + 1} debe tener una respuesta correcta'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+          return;
+        }
+      } else if (q.questionType == 'short_answer') {
+        if (q.correctAnswerCtrl?.text.trim().isEmpty ?? true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('La pregunta ${i + 1} debe tener una respuesta correcta'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+          return;
+        }
+      }
+    }
+
     setState(() => _isLoading = true);
 
     final provider = context.read<AppProvider>();
 
     try {
+      // Preparar preguntas para el backend
+      final questionsData = _questions.map((q) {
+        final questionData = <String, dynamic>{
+          'text': q.textCtrl.text.trim(),
+          'question_type': q.questionType,
+          'order': q.order,
+        };
+
+        if (q.questionType == 'multiple_choice' || q.questionType == 'true_false') {
+          questionData['options'] = q.optionsCtrls
+              .map((c) => c.text.trim())
+              .where((t) => t.isNotEmpty)
+              .toList();
+          questionData['correct_answer'] = q.correctAnswerCtrl!.text.trim();
+        } else {
+          questionData['options'] = [];
+          questionData['correct_answer'] = q.correctAnswerCtrl!.text.trim();
+        }
+
+        if (q.explanationCtrl?.text.trim().isNotEmpty ?? false) {
+          questionData['explanation'] = q.explanationCtrl!.text.trim();
+        }
+
+        return questionData;
+      }).toList();
+
       await provider.apiService.createQuiz(
         courseId: _selectedCourseId!,
         title: _titleCtrl.text.trim(),
         description: _descriptionCtrl.text.trim(),
+        difficulty: _difficulty,
+        passingScore: _passingScore,
+        xpReward: _xpReward,
+        timeLimit: _timeLimit,
+        maxAttempts: _maxAttempts,
+        questions: questionsData,
       );
 
       setState(() => _isLoading = false);
@@ -72,8 +211,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al crear quiz'),
+        SnackBar(
+          content: Text('Error al crear quiz: $e'),
           backgroundColor: AppColors.errorRed,
         ),
       );
@@ -93,6 +232,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         child: ListView(
           padding: AppStyles.screenPadding,
           children: [
+            // Header
             Container(
               padding: AppStyles.cardPadding,
               decoration: BoxDecoration(
@@ -135,6 +275,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             ),
             const SizedBox(height: AppStyles.spacingL),
 
+            // Información básica
             Text('Información del quiz', style: AppTextStyles.h4),
             const SizedBox(height: AppStyles.spacingM),
 
@@ -176,6 +317,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             ),
             const SizedBox(height: AppStyles.spacingM),
 
+            // Título
             TextFormField(
               controller: _titleCtrl,
               decoration: AppStyles.inputDecoration(
@@ -189,6 +331,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             ),
             const SizedBox(height: AppStyles.spacingM),
 
+            // Descripción
             TextFormField(
               controller: _descriptionCtrl,
               decoration: AppStyles.inputDecoration(
@@ -201,8 +344,158 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Ingrese una descripción' : null,
             ),
+            const SizedBox(height: AppStyles.spacingM),
+
+            // Configuración del quiz
+            Text('Configuración', style: AppTextStyles.h4),
+            const SizedBox(height: AppStyles.spacingM),
+
+            // Dificultad
+            DropdownButtonFormField<String>(
+              decoration: AppStyles.inputDecoration(
+                labelText: 'Dificultad',
+                icon: Icons.trending_up,
+              ),
+              value: _difficulty,
+              items: const [
+                DropdownMenuItem(value: 'easy', child: Text('Fácil')),
+                DropdownMenuItem(value: 'medium', child: Text('Medio')),
+                DropdownMenuItem(value: 'hard', child: Text('Difícil')),
+              ],
+              onChanged: (value) {
+                setState(() => _difficulty = value!);
+              },
+            ),
+            const SizedBox(height: AppStyles.spacingM),
+
+            // Puntaje mínimo
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _passingScore.toString(),
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'Puntaje mínimo (%)',
+                      icon: Icons.check_circle_outline,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      _passingScore = double.tryParse(v) ?? 70.0;
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppStyles.spacingM),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _xpReward.toString(),
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'XP Recompensa',
+                      icon: Icons.star,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      _xpReward = int.tryParse(v) ?? 50;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppStyles.spacingM),
+
+            // Tiempo límite y intentos
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _timeLimit.toString(),
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'Tiempo límite (min)',
+                      icon: Icons.timer,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      _timeLimit = int.tryParse(v) ?? 10;
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppStyles.spacingM),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _maxAttempts.toString(),
+                    decoration: AppStyles.inputDecoration(
+                      labelText: 'Intentos máximos',
+                      icon: Icons.repeat,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      _maxAttempts = int.tryParse(v) ?? 3;
+                    },
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: AppStyles.spacingXL),
 
+            // Preguntas
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Preguntas (${_questions.length})', style: AppTextStyles.h4),
+                ElevatedButton.icon(
+                  onPressed: _addQuestion,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentGreen,
+                    foregroundColor: AppColors.whiteText,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppStyles.spacingM),
+
+            // Lista de preguntas
+            ...List.generate(_questions.length, (index) {
+              return _buildQuestionCard(_questions[index], index);
+            }),
+
+            if (_questions.isEmpty)
+              Container(
+                padding: AppStyles.cardPadding,
+                decoration: AppStyles.cardDecoration,
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.help_outline,
+                      size: 48,
+                      color: AppColors.lightText.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: AppStyles.spacingM),
+                    Text(
+                      'No hay preguntas agregadas',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.lightText,
+                      ),
+                    ),
+                    const SizedBox(height: AppStyles.spacingS),
+                    Text(
+                      'Agrega al menos una pregunta para crear el quiz',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.lightText,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: AppStyles.spacingXL),
+
+            // Botones de acción
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -223,7 +516,6 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               ),
             ),
             const SizedBox(height: AppStyles.spacingM),
-
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -237,4 +529,206 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       ),
     );
   }
+
+  Widget _buildQuestionCard(QuestionFormData question, int index) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppStyles.spacingM),
+      padding: AppStyles.cardPadding,
+      decoration: AppStyles.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header de pregunta
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryOrange.withOpacity(0.1),
+                  borderRadius: AppStyles.smallBorderRadius,
+                ),
+                child: Text(
+                  'Pregunta ${question.order}',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryOrange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.errorRed),
+                onPressed: () => _removeQuestion(index),
+                tooltip: 'Eliminar pregunta',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppStyles.spacingM),
+
+          // Tipo de pregunta
+          DropdownButtonFormField<String>(
+            decoration: AppStyles.inputDecoration(
+              labelText: 'Tipo de pregunta',
+              icon: Icons.quiz,
+            ),
+            value: question.questionType,
+            items: const [
+              DropdownMenuItem(
+                value: 'multiple_choice',
+                child: Text('Opción múltiple'),
+              ),
+              DropdownMenuItem(
+                value: 'true_false',
+                child: Text('Verdadero/Falso'),
+              ),
+              DropdownMenuItem(
+                value: 'short_answer',
+                child: Text('Respuesta corta'),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() {
+                question.questionType = value!;
+                // Si cambia a true_false, agregar opciones automáticamente
+                if (value == 'true_false' && question.optionsCtrls.isEmpty) {
+                  question.optionsCtrls = [
+                    TextEditingController(text: 'Verdadero'),
+                    TextEditingController(text: 'Falso'),
+                  ];
+                }
+              });
+            },
+          ),
+          const SizedBox(height: AppStyles.spacingM),
+
+          // Texto de la pregunta
+          TextFormField(
+            controller: question.textCtrl,
+            decoration: AppStyles.inputDecoration(
+              labelText: 'Texto de la pregunta',
+              icon: Icons.question_answer,
+              hintText: 'Ej: ¿Cómo se dice "Hola" en Wayuunaiki?',
+            ),
+            maxLines: 2,
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'Ingrese el texto de la pregunta' : null,
+          ),
+          const SizedBox(height: AppStyles.spacingM),
+
+          // Opciones (solo para multiple_choice y true_false)
+          if (question.questionType == 'multiple_choice' ||
+              question.questionType == 'true_false') ...[
+            Text(
+              'Opciones de respuesta',
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppStyles.spacingS),
+            ...List.generate(question.optionsCtrls.length, (optIndex) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppStyles.spacingS),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: question.optionsCtrls[optIndex],
+                        decoration: AppStyles.inputDecoration(
+                          labelText: 'Opción ${optIndex + 1}',
+                          hintText: 'Escribe una opción',
+                        ),
+                      ),
+                    ),
+                    if (question.optionsCtrls.length > 2)
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: AppColors.errorRed),
+                        onPressed: () {
+                          setState(() {
+                            question.optionsCtrls[optIndex].dispose();
+                            question.optionsCtrls.removeAt(optIndex);
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              );
+            }),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  question.optionsCtrls.add(TextEditingController());
+                });
+              },
+              icon: const Icon(Icons.add_circle_outline, size: 18),
+              label: const Text('Agregar opción'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+              ),
+            ),
+            const SizedBox(height: AppStyles.spacingM),
+          ],
+
+          // Respuesta correcta
+          TextFormField(
+            controller: question.correctAnswerCtrl,
+            decoration: AppStyles.inputDecoration(
+              labelText: question.questionType == 'short_answer'
+                  ? 'Respuesta correcta'
+                  : 'Respuesta correcta (debe coincidir exactamente)',
+              icon: Icons.check_circle,
+              hintText: question.questionType == 'short_answer'
+                  ? 'Ej: wüin'
+                  : 'Escribe la respuesta correcta',
+            ),
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'Ingrese la respuesta correcta' : null,
+          ),
+          const SizedBox(height: AppStyles.spacingM),
+
+          // Explicación (opcional)
+          TextFormField(
+            controller: question.explanationCtrl,
+            decoration: AppStyles.inputDecoration(
+              labelText: 'Explicación (opcional)',
+              icon: Icons.lightbulb_outline,
+              hintText: 'Explica por qué esta es la respuesta correcta',
+            ),
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Clase auxiliar para manejar datos de preguntas en el formulario
+class QuestionFormData {
+  int order;
+  String questionType;
+  TextEditingController textCtrl;
+  List<TextEditingController> optionsCtrls;
+  TextEditingController? correctAnswerCtrl;
+  TextEditingController? explanationCtrl;
+
+  QuestionFormData({
+    required this.order,
+    this.questionType = 'multiple_choice',
+  })  : textCtrl = TextEditingController(),
+        optionsCtrls = questionType == 'true_false'
+            ? [
+                TextEditingController(text: 'Verdadero'),
+                TextEditingController(text: 'Falso'),
+              ]
+            : [
+                TextEditingController(),
+                TextEditingController(),
+                TextEditingController(),
+                TextEditingController(),
+              ],
+        correctAnswerCtrl = TextEditingController(),
+        explanationCtrl = TextEditingController();
 }
