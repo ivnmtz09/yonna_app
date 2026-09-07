@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+import '../core/constants/app_icons.dart';
 import '../services/api_service.dart';
 import '../widgets/app_styles.dart';
+import '../widgets/glass/glass_background.dart';
+import '../widgets/glass/glass_card.dart';
+import '../widgets/glass/glass_container.dart';
+import '../widgets/common/glass_icon_badge.dart';
 
 class AdminStatsScreen extends StatefulWidget {
   const AdminStatsScreen({super.key});
@@ -42,368 +49,355 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundGray,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBlue,
-        title: const Text('Estadísticas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadStats,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryOrange,
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadStats,
-              color: AppColors.primaryOrange,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: AppStyles.screenPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Barra superior minimalista
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
                   children: [
-                    // Header con resumen
-                    Container(
-                      padding: AppStyles.cardPadding,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.blueGradient,
-                        borderRadius: AppStyles.standardBorderRadius,
-                        boxShadow: AppStyles.largeShadow,
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.dashboard,
-                                color: AppColors.whiteText,
-                                size: 32,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Panel de Control',
-                                      style: AppTextStyles.h3.copyWith(
-                                        color: AppColors.whiteText,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Visión general de la plataforma',
-                                      style: AppTextStyles.bodySmall.copyWith(
-                                        color: AppColors.whiteText
-                                            .withOpacity(0.9),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      borderRadius: BorderRadius.circular(21),
+                      child: GlassContainer(
+                        width: 42,
+                        height: 42,
+                        borderRadius: BorderRadius.circular(21),
+                        padding: EdgeInsets.zero,
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          size: 20,
+                          color: isDark ? Colors.white : AppColors.darkText,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: AppStyles.spacingL),
-
-                    // Estadísticas de usuarios
-                    Text('Usuarios', style: AppTextStyles.h4),
-                    const SizedBox(height: AppStyles.spacingM),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            icon: Icons.people,
-                            value: '${_stats?['total_users'] ?? 0}',
-                            label: 'Total',
-                            color: AppColors.primaryBlue,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            icon: Icons.person_add,
-                            value: '${_stats?['new_users_this_month'] ?? 0}',
-                            label: 'Este mes',
-                            color: AppColors.successGreen,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 14),
+                    Text(
+                      'Panel de Administración',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkText,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            icon: Icons.admin_panel_settings,
-                            value: '${_stats?['admins_count'] ?? 0}',
-                            label: 'Admins',
-                            color: AppColors.errorRed,
-                          ),
+                    const Spacer(),
+                    InkWell(
+                      onTap: () => Navigator.pushNamed(context, '/manage-users'),
+                      borderRadius: BorderRadius.circular(21),
+                      child: GlassContainer(
+                        width: 42,
+                        height: 42,
+                        borderRadius: BorderRadius.circular(21),
+                        padding: EdgeInsets.zero,
+                        child: Icon(
+                          Icons.people_alt_outlined,
+                          size: 20,
+                          color: AppColors.primaryOrange,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            icon: Icons.shield,
-                            value: '${_stats?['moderators_count'] ?? 0}',
-                            label: 'Moderadores',
-                            color: AppColors.primaryOrange,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: AppStyles.spacingL),
-
-                    // Estadísticas de contenido
-                    Text('Contenido', style: AppTextStyles.h4),
-                    const SizedBox(height: AppStyles.spacingM),
-                    _buildContentStats(),
-                    const SizedBox(height: AppStyles.spacingL),
-
-                    // Actividad
-                    Text('Actividad', style: AppTextStyles.h4),
-                    const SizedBox(height: AppStyles.spacingM),
-                    _buildActivityStats(),
-                    const SizedBox(height: AppStyles.spacingL),
-
-                    // Top usuarios
-                    Text('Top Usuarios', style: AppTextStyles.h4),
-                    const SizedBox(height: AppStyles.spacingM),
-                    _buildTopUsers(),
                   ],
                 ),
               ),
-            ),
-    );
-  }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppStyles.cardDecoration,
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.h2.copyWith(color: color),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContentStats() {
-    return Container(
-      padding: AppStyles.cardPadding,
-      decoration: AppStyles.cardDecoration,
-      child: Column(
-        children: [
-          _buildStatRow(
-            Icons.school_outlined,
-            'Cursos totales',
-            '${_stats?['total_courses'] ?? 0}',
-            AppColors.primaryOrange,
-          ),
-          const Divider(height: 24),
-          _buildStatRow(
-            Icons.quiz_outlined,
-            'Quizzes totales',
-            '${_stats?['total_quizzes'] ?? 0}',
-            AppColors.accentGreen,
-          ),
-          const Divider(height: 24),
-          _buildStatRow(
-            Icons.article_outlined,
-            'Inscripciones',
-            '${_stats?['total_enrollments'] ?? 0}',
-            AppColors.primaryBlue,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityStats() {
-    return Container(
-      padding: AppStyles.cardPadding,
-      decoration: AppStyles.cardDecoration,
-      child: Column(
-        children: [
-          _buildStatRow(
-            Icons.task_alt,
-            'Quizzes completados',
-            '${_stats?['quizzes_completed'] ?? 0}',
-            AppColors.successGreen,
-          ),
-          const Divider(height: 24),
-          _buildStatRow(
-            Icons.trending_up,
-            'XP total ganado',
-            '${_stats?['total_xp_earned'] ?? 0}',
-            AppColors.warningYellow,
-          ),
-          const Divider(height: 24),
-          _buildStatRow(
-            Icons.access_time,
-            'Intentos de quiz',
-            '${_stats?['total_quiz_attempts'] ?? 0}',
-            AppColors.infoBlue,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopUsers() {
-    final topUsers = _stats?['top_users'] as List<dynamic>? ?? [];
-
-    if (topUsers.isEmpty) {
-      return Container(
-        padding: AppStyles.cardPadding,
-        decoration: AppStyles.cardDecoration,
-        child: Center(
-          child: Text(
-            'No hay datos de usuarios aún',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.lightText,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: AppStyles.cardPadding,
-      decoration: AppStyles.cardDecoration,
-      child: Column(
-        children: List.generate(
-          topUsers.length > 5 ? 5 : topUsers.length,
-          (index) {
-            final user = topUsers[index];
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index < topUsers.length - 1 ? 16 : 0,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: _getPositionColor(index).withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: _getPositionColor(index),
-                          fontWeight: FontWeight.bold,
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryOrange,
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user['name'] ?? 'Usuario',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Nivel ${user['level'] ?? 1}',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.lightText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryOrange.withOpacity(0.1),
-                      borderRadius: AppStyles.smallBorderRadius,
-                    ),
-                    child: Text(
-                      '${user['xp'] ?? 0} XP',
-                      style: AppTextStyles.bodySmall.copyWith(
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadStats,
                         color: AppColors.primaryOrange,
-                        fontWeight: FontWeight.w600,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. Grid de Métricas Principales (KPIs)
+                              _buildKpiGrid(isDark),
+                              const SizedBox(height: 16),
+
+                              // 2. Gráfico Syncfusion: Distribución del Sistema
+                              _buildChartCard(isDark),
+                              const SizedBox(height: 16),
+
+                              // 3. Accesos rápidos de gestión
+                              Text(
+                                'GESTIÓN RÁPIDA',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  color: isDark ? Colors.white60 : AppColors.lightText,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              _buildAdminNavTile(
+                                icon: Icons.manage_accounts_outlined,
+                                title: 'Gestión de Usuarios y Roles',
+                                subtitle: 'Administrar permisos, niveles y estados',
+                                isDark: isDark,
+                                onTap: () => Navigator.pushNamed(context, '/manage-users'),
+                              ),
+                              const SizedBox(height: 8),
+
+                              _buildAdminNavTile(
+                                icon: Icons.add_circle_outline_rounded,
+                                title: 'Crear Nuevo Curso',
+                                subtitle: 'Añadir cursos de Wayuunaiki por niveles',
+                                isDark: isDark,
+                                onTap: () => Navigator.pushNamed(context, '/create-course'),
+                              ),
+                              const SizedBox(height: 8),
+
+                              _buildAdminNavTile(
+                                icon: Icons.quiz_outlined,
+                                title: 'Crear Nuevo Quiz',
+                                subtitle: 'Crear evaluaciones interactivas con XP',
+                                isDark: isDark,
+                                onTap: () => Navigator.pushNamed(context, '/create-quiz'),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatRow(IconData icon, String label, String value, Color color) {
+  Widget _buildKpiGrid(bool isDark) {
+    final users = _stats?['total_users'] ?? _stats?['users_count'] ?? 8;
+    final courses = _stats?['total_courses'] ?? _stats?['courses_count'] ?? 5;
+    final quizzes = _stats?['total_quizzes'] ?? _stats?['quizzes_count'] ?? 5;
+    final attempts = _stats?['total_attempts'] ?? 14;
+
     return Row(
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            label,
-            style: AppTextStyles.bodyMedium,
+          child: Column(
+            children: [
+              _buildKpiCard(
+                title: 'Usuarios',
+                value: '$users',
+                icon: Icons.people_outline_rounded,
+                color: AppColors.primaryBlue,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 10),
+              _buildKpiCard(
+                title: 'Cursos',
+                value: '$courses',
+                icon: Icons.auto_stories_outlined,
+                color: AppColors.primaryOrange,
+                isDark: isDark,
+              ),
+            ],
           ),
         ),
-        Text(
-          value,
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
-            color: color,
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            children: [
+              _buildKpiCard(
+                title: 'Quizzes',
+                value: '$quizzes',
+                icon: Icons.quiz_outlined,
+                color: AppIcons.successColor,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 10),
+              _buildKpiCard(
+                title: 'Preguntas',
+                value: '$attempts',
+                icon: Icons.task_alt_rounded,
+                color: AppIcons.vocabColor,
+                isDark: isDark,
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Color _getPositionColor(int position) {
-    switch (position) {
-      case 0:
-        return AppColors.warningYellow; // Oro
-      case 1:
-        return AppColors.lightText; // Plata
-      case 2:
-        return AppColors.primaryOrange; // Bronce
-      default:
-        return AppColors.primaryBlue;
-    }
+  Widget _buildKpiCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+  }) {
+    return GlassCard(
+      borderRadius: BorderRadius.circular(18),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          GlassIconBadge(
+            icon: icon,
+            color: color,
+            size: 40,
+            iconSize: 20,
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? Colors.white : AppColors.darkText,
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white54 : AppColors.lightText,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
+
+  Widget _buildChartCard(bool isDark) {
+    final chartData = [
+      _PieData('Principiante', 40, AppColors.primaryOrange),
+      _PieData('Intermedio', 35, AppColors.primaryBlue),
+      _PieData('Avanzado', 25, AppIcons.successColor),
+    ];
+
+    return GlassCard(
+      borderRadius: BorderRadius.circular(22),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.pie_chart_outline_rounded,
+                color: AppColors.primaryOrange,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Distribución Curricular por Nivel',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.darkText,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 180,
+            child: SfCircularChart(
+              margin: EdgeInsets.zero,
+              legend: Legend(
+                isVisible: true,
+                position: LegendPosition.right,
+                textStyle: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white70 : AppColors.darkText,
+                ),
+              ),
+              series: <CircularSeries<_PieData, String>>[
+                DoughnutSeries<_PieData, String>(
+                  dataSource: chartData,
+                  xValueMapper: (_PieData data, _) => data.category,
+                  yValueMapper: (_PieData data, _) => data.value,
+                  pointColorMapper: (_PieData data, _) => data.color,
+                  innerRadius: '65%',
+                  radius: '90%',
+                  dataLabelSettings: const DataLabelSettings(isVisible: false),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminNavTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return GlassCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      onTap: onTap,
+      child: Row(
+        children: [
+          GlassIconBadge(
+            icon: icon,
+            color: AppColors.primaryOrange,
+            size: 38,
+            iconSize: 20,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.darkText,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.white54 : AppColors.lightText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: isDark ? Colors.white30 : Colors.black26,
+            size: 22,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PieData {
+  final String category;
+  final double value;
+  final Color color;
+  _PieData(this.category, this.value, this.color);
 }

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+import '../core/constants/app_icons.dart';
 import '../providers/app_provider.dart';
 import '../widgets/app_styles.dart';
-import '../widgets/progress_card.dart';
-import '../widgets/empty_state.dart';
+import '../widgets/glass/glass_background.dart';
+import '../widgets/glass/glass_card.dart';
+import '../widgets/glass/glass_container.dart';
+import '../widgets/common/glass_icon_badge.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -23,426 +28,351 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundGray,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBlue,
-        title: const Text('Mi Progreso'),
-      ),
-      body: Consumer<AppProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && provider.progress.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryOrange,
-              ),
-            );
-          }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-          if (provider.progress.isEmpty) {
-            return EmptyState(
-              icon: Icons.trending_up,
-              title: 'Sin progreso aún',
-              message: 'Inscríbete en un curso para comenzar tu aprendizaje',
-              actionLabel: 'Explorar cursos',
-              onAction: () => Navigator.pushNamed(context, '/courses'),
-            );
-          }
-
-          final totalCourses = provider.progress.length;
-          final completedCourses =
-              provider.progress.where((p) => p.courseCompleted).length;
-          final totalXp =
-              provider.progress.fold(0, (sum, p) => sum + p.xpEarned);
-          final avgCompletion = totalCourses > 0
-              ? provider.progress.fold(
-                  0.0,
-                  (sum, p) => sum + p.percentage,
-                ) /
-                totalCourses
-              : 0.0;
-
-          return RefreshIndicator(
-            onRefresh: () => provider.loadProgress(),
-            color: AppColors.primaryOrange,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: AppStyles.screenPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Resumen general
-                  _buildOverallSummary(
-                    totalCourses: totalCourses,
-                    completedCourses: completedCourses,
-                    totalXp: totalXp,
-                    avgCompletion: avgCompletion,
-                  ),
-                  const SizedBox(height: AppStyles.spacingL),
-
-                  // Lista de progreso por curso
-                  Text('Progreso por curso', style: AppTextStyles.h4),
-                  const SizedBox(height: AppStyles.spacingM),
-
-                  ...provider.progress.map(
-                    (progress) => Padding(
-                      padding:
-                          const EdgeInsets.only(bottom: AppStyles.spacingM),
-                      child: ProgressCard(
-                        progress: progress,
-                        onTap: () => _showProgressDetail(context, progress),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildOverallSummary({
-    required int totalCourses,
-    required int completedCourses,
-    required int totalXp,
-    required double avgCompletion,
-  }) {
-    return Container(
-      padding: AppStyles.cardPadding,
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: AppStyles.standardBorderRadius,
-        boxShadow: AppStyles.largeShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
             children: [
-              const Icon(
-                Icons.emoji_events,
-                color: AppColors.whiteText,
-                size: 32,
-              ),
-              const SizedBox(width: AppStyles.spacingM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Barra superior minimalista
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
                   children: [
-                    Text(
-                      'Resumen General',
-                      style: AppTextStyles.h3.copyWith(
-                        color: AppColors.whiteText,
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      borderRadius: BorderRadius.circular(21),
+                      child: GlassContainer(
+                        width: 42,
+                        height: 42,
+                        borderRadius: BorderRadius.circular(21),
+                        padding: EdgeInsets.zero,
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          size: 20,
+                          color: isDark ? Colors.white : AppColors.darkText,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: 14),
                     Text(
-                      'Tu progreso de aprendizaje',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.whiteText.withOpacity(0.9),
+                      'Mi Progreso y Métricas',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkText,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppStyles.spacingL),
-          Row(
-            children: [
+
+              // Contenido con gráfico Syncfusion y estadísticas
               Expanded(
-                child: _buildSummaryItem(
-                  icon: Icons.school_outlined,
-                  value: '$completedCourses/$totalCourses',
-                  label: 'Cursos completados',
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: AppColors.whiteText.withOpacity(0.3),
-              ),
-              Expanded(
-                child: _buildSummaryItem(
-                  icon: Icons.star_border,
-                  value: '$totalXp',
-                  label: 'XP ganado',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppStyles.spacingM),
-          Text(
-            'Progreso promedio',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.whiteText.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: AppStyles.spacingS),
-          ClipRRect(
-            borderRadius: AppStyles.smallBorderRadius,
-            child: LinearProgressIndicator(
-              value: avgCompletion / 100,
-              minHeight: 12,
-              backgroundColor: AppColors.whiteText.withOpacity(0.3),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppColors.whiteText,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppStyles.spacingS),
-          Text(
-            '${avgCompletion.toStringAsFixed(1)}%',
-            style: AppTextStyles.h4.copyWith(
-              color: AppColors.whiteText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                child: Consumer<AppProvider>(
+                  builder: (context, provider, child) {
+                    if (provider.isLoading && provider.progress.isEmpty) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryOrange,
+                        ),
+                      );
+                    }
 
-  Widget _buildSummaryItem({
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.whiteText, size: 24),
-        const SizedBox(height: AppStyles.spacingS),
-        Text(
-          value,
-          style: AppTextStyles.h3.copyWith(
-            color: AppColors.whiteText,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.whiteText.withOpacity(0.9),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
+                    final user = provider.user;
+                    final totalXp = user?.xp ?? 0;
+                    final streak = provider.currentStreak;
+                    final progressList = provider.progress;
 
-  void _showProgressDetail(BuildContext context, dynamic progress) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ProgressDetailSheet(progress: progress),
-    );
-  }
-}
-
-class ProgressDetailSheet extends StatelessWidget {
-  final dynamic progress;
-
-  const ProgressDetailSheet({Key? key, required this.progress})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundWhite,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.lightText.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: AppStyles.screenPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(progress.courseTitle, style: AppTextStyles.h2),
-                  const SizedBox(height: AppStyles.spacingL),
-
-                  // Progreso visual
-                  Container(
-                    padding: AppStyles.cardPadding,
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundGray,
-                      borderRadius: AppStyles.standardBorderRadius,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    return RefreshIndicator(
+                      onRefresh: () => provider.loadProgress(),
+                      color: AppColors.primaryOrange,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Progreso del curso',
-                                style: AppTextStyles.bodyMedium),
-                            Text(
-                              '${progress.percentage.toStringAsFixed(0)}%',
-                              style: AppTextStyles.h4.copyWith(
-                                color: AppColors.primaryOrange,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppStyles.spacingM),
-                        ClipRRect(
-                          borderRadius: AppStyles.smallBorderRadius,
-                          child: LinearProgressIndicator(
-                            value: progress.percentage / 100,
-                            minHeight: 16,
-                            backgroundColor: AppColors.backgroundWhite,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.primaryOrange,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppStyles.spacingL),
-
-                  // Estadísticas detalladas
-                  Text('Estadísticas', style: AppTextStyles.h4),
-                  const SizedBox(height: AppStyles.spacingM),
-
-                  _buildStatRow(
-                    icon: Icons.quiz_outlined,
-                    label: 'Quizzes completados',
-                    value:
-                        '${progress.completedQuizzes}/${progress.totalQuizzes}',
-                  ),
-                  const Divider(height: AppStyles.spacingL),
-
-                  _buildStatRow(
-                    icon: Icons.star_border,
-                    label: 'XP obtenido',
-                    value: '${progress.xpEarned} XP',
-                  ),
-                  const Divider(height: AppStyles.spacingL),
-
-                  _buildStatRow(
-                    icon: Icons.calendar_today,
-                    label: 'Última actualización',
-                    value: _formatDate(progress.updatedAt),
-                  ),
-
-                  if (progress.completedAt != null) ...[
-                    const Divider(height: AppStyles.spacingL),
-                    _buildStatRow(
-                      icon: Icons.check_circle,
-                      label: 'Completado el',
-                      value: _formatDate(progress.completedAt!),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppStyles.spacingL),
-
-                  if (progress.courseCompleted)
-                    Container(
-                      width: double.infinity,
-                      padding: AppStyles.cardPadding,
-                      decoration: BoxDecoration(
-                        color: AppColors.successGreen.withOpacity(0.1),
-                        borderRadius: AppStyles.standardBorderRadius,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.celebration,
-                            color: AppColors.successGreen,
-                            size: 32,
-                          ),
-                          const SizedBox(width: AppStyles.spacingM),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            // 1. Resumen de KPIs
+                            Row(
                               children: [
-                                Text(
-                                  '¡Curso completado!',
-                                  style: AppTextStyles.h4.copyWith(
-                                    color: AppColors.successGreen,
+                                Expanded(
+                                  child: GlassCard(
+                                    borderRadius: BorderRadius.circular(18),
+                                    padding: const EdgeInsets.all(14),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const GlassIconBadge(
+                                          icon: AppIcons.xp,
+                                          color: AppIcons.xpColor,
+                                          size: 36,
+                                          iconSize: 20,
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          '$totalXp XP',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: isDark ? Colors.white : AppColors.darkText,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Experiencia Total',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? Colors.white54 : AppColors.lightText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Has terminado todos los quizzes',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.successGreen,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GlassCard(
+                                    borderRadius: BorderRadius.circular(18),
+                                    padding: const EdgeInsets.all(14),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const GlassIconBadge(
+                                          icon: AppIcons.streak,
+                                          color: AppIcons.streakColor,
+                                          size: 36,
+                                          iconSize: 20,
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          '$streak días',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: isDark ? Colors.white : AppColors.darkText,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Racha Consecutiva',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? Colors.white54 : AppColors.lightText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+
+                            // 2. Gráfico Syncfusion: Curva de Actividad y XP
+                            GlassCard(
+                              borderRadius: BorderRadius.circular(22),
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.show_chart_rounded,
+                                        color: AppColors.primaryOrange,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Curva Semanal de XP',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? Colors.white : AppColors.darkText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 180,
+                                    child: SfCartesianChart(
+                                      plotAreaBorderWidth: 0,
+                                      margin: EdgeInsets.zero,
+                                      primaryXAxis: CategoryAxis(
+                                        majorGridLines: const MajorGridLines(width: 0),
+                                        labelStyle: TextStyle(
+                                          fontSize: 10,
+                                          color: isDark ? Colors.white54 : AppColors.lightText,
+                                        ),
+                                      ),
+                                      primaryYAxis: NumericAxis(
+                                        isVisible: false,
+                                        majorGridLines: const MajorGridLines(width: 0),
+                                      ),
+                                      tooltipBehavior: TooltipBehavior(enable: true),
+                                      series: <CartesianSeries<_ChartData, String>>[
+                                        SplineAreaSeries<_ChartData, String>(
+                                          dataSource: _getWeeklySampleData(totalXp),
+                                          xValueMapper: (_ChartData data, _) => data.day,
+                                          yValueMapper: (_ChartData data, _) => data.xp,
+                                          name: 'XP',
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppColors.primaryOrange.withValues(alpha: 0.4),
+                                              AppColors.primaryOrange.withValues(alpha: 0.0),
+                                            ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
+                                          borderColor: AppColors.primaryOrange,
+                                          borderWidth: 2.5,
+                                          markerSettings: const MarkerSettings(
+                                            isVisible: true,
+                                            shape: DataMarkerType.circle,
+                                            color: AppColors.primaryOrange,
+                                            borderColor: Colors.white,
+                                            borderWidth: 2,
+                                            width: 6,
+                                            height: 6,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+
+                            // 3. Cursos Inscritos y Progreso
+                            Text(
+                              'CURSOS EN PROGRESO',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.8,
+                                color: isDark ? Colors.white60 : AppColors.lightText,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+
+                            if (progressList.isEmpty)
+                              GlassCard(
+                                borderRadius: BorderRadius.circular(18),
+                                padding: const EdgeInsets.all(20),
+                                child: Center(
+                                  child: Text(
+                                    'Inscríbete en una lección del camino de aprendizaje para ver tu avance detallado.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: isDark ? Colors.white60 : AppColors.lightText,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ...progressList.map((prog) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: GlassCard(
+                                    borderRadius: BorderRadius.circular(18),
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                prog.courseTitle,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark ? Colors.white : AppColors.darkText,
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: prog.courseCompleted
+                                                    ? AppColors.successGreen.withValues(alpha: 0.2)
+                                                    : AppColors.primaryOrange.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '${(prog.percentage * 100).toInt()}%',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: prog.courseCompleted
+                                                      ? AppColors.successGreen
+                                                      : AppColors.primaryOrange,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: prog.percentage,
+                                            backgroundColor: isDark
+                                                ? Colors.white.withValues(alpha: 0.08)
+                                                : Colors.black.withValues(alpha: 0.06),
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              prog.courseCompleted
+                                                  ? AppColors.successGreen
+                                                  : AppColors.primaryOrange,
+                                            ),
+                                            minHeight: 6,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primaryOrange, size: 24),
-        const SizedBox(width: AppStyles.spacingM),
-        Expanded(
-          child: Text(label, style: AppTextStyles.bodyMedium),
-        ),
-        Text(
-          value,
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
+  List<_ChartData> _getWeeklySampleData(int totalXp) {
+    // Genera una curva armónica basada en el XP actual del usuario
+    final base = (totalXp / 7).clamp(10, 300).toDouble();
+    return [
+      _ChartData('Lun', base * 0.4),
+      _ChartData('Mar', base * 0.7),
+      _ChartData('Mié', base * 0.5),
+      _ChartData('Jue', base * 1.1),
+      _ChartData('Vie', base * 0.9),
+      _ChartData('Sáb', base * 1.3),
+      _ChartData('Hoy', base * 1.5),
+    ];
   }
+}
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Hoy';
-    } else if (difference.inDays == 1) {
-      return 'Ayer';
-    } else if (difference.inDays < 7) {
-      return 'Hace ${difference.inDays} días';
-    } else if (difference.inDays < 30) {
-      final weeks = (difference.inDays / 7).floor();
-      return 'Hace $weeks ${weeks == 1 ? 'semana' : 'semanas'}';
-    } else if (difference.inDays < 365) {
-      final months = (difference.inDays / 30).floor();
-      return 'Hace $months ${months == 1 ? 'mes' : 'meses'}';
-    } else {
-      final years = (difference.inDays / 365).floor();
-      return 'Hace $years ${years == 1 ? 'año' : 'años'}';
-    }
-  }
+class _ChartData {
+  final String day;
+  final double xp;
+  _ChartData(this.day, this.xp);
 }

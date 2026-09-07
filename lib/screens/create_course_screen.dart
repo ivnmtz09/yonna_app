@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/app_styles.dart';
+import '../widgets/glass/glass_background.dart';
+import '../widgets/glass/glass_button.dart';
+import '../widgets/glass/glass_card.dart';
+import '../widgets/glass/glass_container.dart';
 
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
@@ -58,114 +63,159 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundGray,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBlue,
-        title: const Text('Crear Curso'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: AppStyles.screenPadding,
-          children: [
-            Container(
-              padding: AppStyles.cardPadding,
-              decoration: BoxDecoration(
-                color: AppColors.accentGreen.withOpacity(0.1),
-                borderRadius: AppStyles.standardBorderRadius,
-                border: Border.all(
-                  color: AppColors.accentGreen.withOpacity(0.3),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Barra superior minimalista
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      borderRadius: BorderRadius.circular(21),
+                      child: GlassContainer(
+                        width: 42,
+                        height: 42,
+                        borderRadius: BorderRadius.circular(21),
+                        padding: EdgeInsets.zero,
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          size: 20,
+                          color: isDark ? Colors.white : AppColors.darkText,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      'Nuevo Curso Wayuu',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkText,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.school_outlined,
-                    color: AppColors.accentGreen,
-                    size: 32,
-                  ),
-                  const SizedBox(width: AppStyles.spacingM),
-                  Expanded(
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Form(
+                    key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Nuevo Curso',
-                          style: AppTextStyles.h4.copyWith(
-                            color: AppColors.accentGreen,
+                        GlassCard(
+                          borderRadius: BorderRadius.circular(22),
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'INFORMACIÓN DEL CURSO',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  color: isDark ? Colors.white60 : AppColors.lightText,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              TextFormField(
+                                controller: _titleCtrl,
+                                style: TextStyle(color: isDark ? Colors.white : AppColors.darkText),
+                                decoration: InputDecoration(
+                                  labelText: 'Título del curso',
+                                  labelStyle: TextStyle(color: isDark ? Colors.white60 : AppColors.lightText),
+                                  hintText: 'Ej: Pünajirawaa: Saludos Básicos',
+                                  prefixIcon: const Icon(Icons.school_outlined, color: AppColors.primaryOrange),
+                                  filled: true,
+                                  fillColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.03),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5),
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) return 'Ingresa el título';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              TextFormField(
+                                controller: _descriptionCtrl,
+                                maxLines: 4,
+                                style: TextStyle(color: isDark ? Colors.white : AppColors.darkText),
+                                decoration: InputDecoration(
+                                  labelText: 'Descripción del curso',
+                                  labelStyle: TextStyle(color: isDark ? Colors.white60 : AppColors.lightText),
+                                  hintText: 'Explica los conceptos de vocabulario y cultura que se aprenderán...',
+                                  prefixIcon: const Icon(Icons.description_outlined, color: AppColors.primaryOrange),
+                                  filled: true,
+                                  fillColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.03),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5),
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) return 'Ingresa la descripción';
+                                  return null;
+                                },
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Comparte tu conocimiento del Wayuunaiki',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.accentGreen,
-                          ),
+                        const SizedBox(height: 24),
+
+                        GlassButton(
+                          text: 'CREAR CURSO',
+                          icon: Icons.add_rounded,
+                          isPrimary: true,
+                          isLoading: _isLoading,
+                          height: 50,
+                          width: double.infinity,
+                          onPressed: _createCourse,
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppStyles.spacingL),
-            Text('Información del curso', style: AppTextStyles.h4),
-            const SizedBox(height: AppStyles.spacingM),
-            TextFormField(
-              controller: _titleCtrl,
-              decoration: AppStyles.inputDecoration(
-                labelText: 'Título del curso',
-                icon: Icons.title,
-                hintText: 'Ej: Wayuunaiki Básico',
-              ),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Ingrese un título' : null,
-              maxLength: 100,
-            ),
-            const SizedBox(height: AppStyles.spacingM),
-            TextFormField(
-              controller: _descriptionCtrl,
-              decoration: AppStyles.inputDecoration(
-                labelText: 'Descripción',
-                icon: Icons.description_outlined,
-                hintText: 'Describe el contenido del curso',
-              ),
-              maxLines: 5,
-              maxLength: 500,
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Ingrese una descripción' : null,
-            ),
-            const SizedBox(height: AppStyles.spacingXL),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createCourse,
-                style: AppStyles.primaryButton,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.whiteText,
-                          ),
-                        ),
-                      )
-                    : const Text('Crear Curso'),
-              ),
-            ),
-            const SizedBox(height: AppStyles.spacingM),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: AppStyles.outlinedButton,
-                child: const Text('Cancelar'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

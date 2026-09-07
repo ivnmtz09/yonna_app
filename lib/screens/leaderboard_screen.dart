@@ -16,7 +16,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _leaderboard = [];
   bool _isLoading = false;
-  String _period = 'all'; // all, month, week
 
   @override
   void initState() {
