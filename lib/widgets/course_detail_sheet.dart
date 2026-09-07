@@ -1,147 +1,146 @@
-// lib/widgets/course_detail_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/constants/app_icons.dart';
 import '../providers/app_provider.dart';
 import 'app_styles.dart';
+import 'glass/glass_button.dart';
+import 'glass/glass_card.dart';
+import 'glass/glass_sheet.dart';
+import 'common/glass_icon_badge.dart';
 
 class CourseDetailSheet extends StatelessWidget {
   final dynamic course;
 
-  const CourseDetailSheet({Key? key, required this.course}) : super(key: key);
+  const CourseDetailSheet({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isEnrolled = course.isEnrolled ?? provider.isEnrolled(course.id);
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundWhite,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
+    return GlassSheet(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.lightText.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: AppStyles.screenPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(course.title, style: AppTextStyles.h2),
-                  const SizedBox(height: AppStyles.spacingS),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryOrange.withOpacity(0.1),
-                          borderRadius: AppStyles.smallBorderRadius,
-                        ),
-                        child: Text(
-                          'Nivel ${course.level}',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.primaryOrange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppStyles.spacingS),
-                      const Icon(
-                        Icons.people_outline,
-                        size: 16,
-                        color: AppColors.lightText,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${course.enrolledCount} inscritos',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppStyles.spacingL),
-                  Text('Descripción', style: AppTextStyles.h4),
-                  const SizedBox(height: AppStyles.spacingS),
-                  Text(
-                    course.description,
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  const SizedBox(height: AppStyles.spacingL),
-                  if (course.isEnrolled) ...[
-                    Container(
-                      padding: AppStyles.cardPadding,
-                      decoration: BoxDecoration(
-                        color: AppColors.successGreen.withOpacity(0.1),
-                        borderRadius: AppStyles.standardBorderRadius,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            color: AppColors.successGreen,
-                          ),
-                          const SizedBox(width: AppStyles.spacingS),
-                          Text(
-                            'Ya estás inscrito en este curso',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.successGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GlassIconBadge(
+                icon: AppIcons.lesson,
+                color: AppColors.primaryOrange,
+                size: 52,
+                iconSize: 26,
+                borderRadius: 26,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkText,
                       ),
                     ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final success =
-                              await provider.enrollInCourse(course.id);
-                          if (!context.mounted) return;
-
-                          if (success) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('¡Te has inscrito exitosamente!'),
-                                backgroundColor: AppColors.successGreen,
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    provider.error ?? 'Error al inscribirse'),
-                                backgroundColor: AppColors.errorRed,
-                              ),
-                            );
-                          }
-                        },
-                        style: AppStyles.primaryButton,
-                        child: const Text('Inscribirse'),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryOrange.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Nivel ${course.levelRequired ?? course.level ?? 1}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryOrange,
+                        ),
                       ),
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            'DESCRIPCIÓN',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+              color: isDark ? Colors.white60 : AppColors.lightText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            course.description ?? 'Sin descripción disponible',
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: isDark ? Colors.white70 : AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          if (isEnrolled) ...[
+            GlassCard(
+              borderRadius: BorderRadius.circular(16),
+              backgroundColor: AppIcons.successColor.withValues(alpha: isDark ? 0.15 : 0.10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppIcons.successColor, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Ya estás inscrito en este curso',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.darkText,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
+          ] else ...[
+            GlassButton(
+              text: 'INSCRIBIRSE AL CURSO',
+              icon: Icons.school_rounded,
+              isPrimary: true,
+              height: 48,
+              width: double.infinity,
+              onPressed: () async {
+                final success = await provider.enrollInCourse(course.id);
+                if (!context.mounted) return;
+
+                if (success) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('¡Te has inscrito exitosamente!'),
+                      backgroundColor: AppColors.successGreen,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(provider.error ?? 'Error al inscribirse'),
+                      backgroundColor: AppColors.errorRed,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+          const SizedBox(height: 12),
         ],
       ),
     );
