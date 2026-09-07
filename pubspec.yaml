@@ -26,6 +26,8 @@ dependencies:
   
   # Iconos
   cupertino_icons: ^1.0.8
+  just_audio: ^0.10.6
+  syncfusion_flutter_charts: ^28.2.9
 
 dev_dependencies:
   flutter_test:
