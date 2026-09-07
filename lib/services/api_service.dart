@@ -4,8 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // --- CONFIGURACIÓN BASE ---
-  static const String _host = '192.168.1.4';
-  static const String baseUrl = 'http://$_host:8000/api/';
+  // Se utiliza 127.0.0.1 aprovechando el túnel USB directo 'adb reverse tcp:8000 tcp:8000'
+  static const String _host = '127.0.0.1';
+  static const String serverUrl = 'http://$_host:8000';
+  static const String baseUrl = '$serverUrl/api/';
 
   // --- SINGLETON ---
   static final ApiService _instance = ApiService._internal();
@@ -509,14 +511,103 @@ class ApiService {
     return await _makeAuthenticatedRequest('POST', 'progress/update/', body: body);
   }
 
-  Future<List<dynamic>> getLeaderboard() async {
+  // ========== GAMIFICACIÓN (STREAK, BADGES, LEADERBOARD) ==========
+
+  Future<Map<String, dynamic>> getMyStreak() async {
     try {
-      final data = await _makeAuthenticatedRequest('GET', 'progress/leaderboard/');
-      return _extractList(data, ['results', 'leaderboard', 'data']);
+      return await _makeAuthenticatedRequest('GET', 'gamification/my-streak/');
     } catch (e) {
-      print('❌ Error getting leaderboard: $e');
+      print('⚠️ Fallback streak to progress: $e');
+      try {
+        return await _makeAuthenticatedRequest('GET', 'progress/streak/');
+      } catch (_) {
+        return {'current_streak': 0, 'longest_streak': 0, 'freeze_tokens': 0};
+      }
+    }
+  }
+
+  Future<List<dynamic>> getMyBadges() async {
+    try {
+      final data = await _makeAuthenticatedRequest('GET', 'gamification/my-badges/');
+      return _extractList(data, ['results', 'badges', 'data']);
+    } catch (e) {
+      print('❌ Error getting badges: $e');
       return [];
     }
+  }
+
+  Future<List<dynamic>> getLeaderboard({int limit = 50}) async {
+    try {
+      final data = await _makeAuthenticatedRequest('GET', 'gamification/leaderboard/?limit=$limit');
+      return _extractList(data, ['results', 'leaderboard', 'data']);
+    } catch (e) {
+      print('⚠️ Fallback leaderboard: $e');
+      try {
+        final data = await _makeAuthenticatedRequest('GET', 'progress/leaderboard/');
+        return _extractList(data, ['results', 'leaderboard', 'data']);
+      } catch (e2) {
+        print('❌ Error getting leaderboard: $e2');
+        return [];
+      }
+    }
+  }
+
+  // ========== VOCABULARIO (DICCIONARIO & REPASO SRS) ==========
+
+  Future<List<dynamic>> getVocabularyCategories() async {
+    try {
+      final data = await _makeAuthenticatedRequest('GET', 'vocabulary/categories/');
+      return _extractList(data, ['results', 'categories', 'data']);
+    } catch (e) {
+      print('❌ Error getting vocabulary categories: $e');
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getVocabularyEntries({
+    String? category,
+    String? difficulty,
+    String? search,
+  }) async {
+    try {
+      final queryParams = <String>[];
+      if (category != null && category.isNotEmpty) queryParams.add('category=$category');
+      if (difficulty != null && difficulty.isNotEmpty) queryParams.add('difficulty=$difficulty');
+      if (search != null && search.isNotEmpty) queryParams.add('search=${Uri.encodeComponent(search)}');
+      
+      final queryStr = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+      final data = await _makeAuthenticatedRequest('GET', 'vocabulary/entries/$queryStr');
+      return _extractList(data, ['results', 'entries', 'data']);
+    } catch (e) {
+      print('❌ Error getting vocabulary entries: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getWordOfTheDay() async {
+    try {
+      return await _makeAuthenticatedRequest('GET', 'vocabulary/entries/word-of-the-day/');
+    } catch (e) {
+      print('❌ Error getting word of the day: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getWordProgress(int entryId) async {
+    try {
+      return await _makeAuthenticatedRequest('GET', 'vocabulary/entries/$entryId/my-progress/');
+    } catch (e) {
+      print('❌ Error getting word progress: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateWordProgress(int entryId, int masteryLevel) async {
+    return await _makeAuthenticatedRequest(
+      'PATCH',
+      'vocabulary/entries/$entryId/my-progress/',
+      body: {'mastery_level': masteryLevel},
+    );
   }
 
   // ========== STATS ==========
@@ -575,7 +666,10 @@ class ApiService {
     await _makeAuthenticatedRequest(
       'POST',
       'notifications/mark-read/',
-      body: {'notification_id': notificationId},
+      body: {
+        'notification_ids': [notificationId],
+        'notification_id': notificationId,
+      },
     );
   }
 
@@ -583,14 +677,33 @@ class ApiService {
     await _makeAuthenticatedRequest('POST', 'notifications/mark-all-read/');
   }
 
-  // ========== MEDIA CONTENT ==========
+  // ========== MEDIA CONTENT (BIBLIOTECA CULTURAL) ==========
   
-  Future<List<dynamic>> getMediaContent() async {
+  Future<List<dynamic>> getMediaContent({String? mediaType, String? category}) async {
     try {
-      final data = await _makeAuthenticatedRequest('GET', 'media-content/');
+      final queryParams = <String>[];
+      if (mediaType != null) queryParams.add('media_type=$mediaType');
+      if (category != null) queryParams.add('category=$category');
+      final queryStr = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+
+      final data = await _makeAuthenticatedRequest('GET', 'media/media/$queryStr');
       return _extractList(data, ['results', 'media', 'data']);
     } catch (e) {
-      print('❌ Error getting media content: $e');
+      try {
+        final data = await _makeAuthenticatedRequest('GET', 'media-content/');
+        return _extractList(data, ['results', 'media', 'data']);
+      } catch (_) {
+        return [];
+      }
+    }
+  }
+
+  Future<List<dynamic>> getMediaCollections() async {
+    try {
+      final data = await _makeAuthenticatedRequest('GET', 'media/collections/');
+      return _extractList(data, ['results', 'collections', 'data']);
+    } catch (e) {
+      print('❌ Error getting media collections: $e');
       return [];
     }
   }

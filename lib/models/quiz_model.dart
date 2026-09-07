@@ -148,6 +148,8 @@ class QuestionModel {
   final List<String> options;
   final int order;
   final String? explanation;
+  final String? audio;
+  final String? correctOption;
 
   QuestionModel({
     required this.id,
@@ -156,6 +158,8 @@ class QuestionModel {
     required this.options,
     required this.order,
     this.explanation,
+    this.audio,
+    this.correctOption,
   });
 
   factory QuestionModel.fromJson(Map<String, dynamic> json) {
@@ -167,6 +171,8 @@ class QuestionModel {
           json['options'] != null ? List<String>.from(json['options']) : [],
       order: json['order'] ?? 0,
       explanation: json['explanation'],
+      audio: json['audio'] ?? json['audio_url'],
+      correctOption: json['correct_option']?.toString(),
     );
   }
 
@@ -178,6 +184,8 @@ class QuestionModel {
       'options': options,
       'order': order,
       'explanation': explanation,
+      'audio': audio,
+      'correct_option': correctOption,
     };
   }
 

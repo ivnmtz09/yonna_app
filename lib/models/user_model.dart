@@ -74,6 +74,7 @@ class UserModel {
   int get xpForNextLevel => level * 100;
   double get progressToNextLevel =>
       isUser ? (xp % xpForNextLevel) / xpForNextLevel : 0;
+  double get levelProgress => progressToNextLevel;
 
   String get fullName => '$firstName $lastName'.trim();
 

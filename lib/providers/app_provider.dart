@@ -6,6 +6,9 @@ import '../models/course_model.dart';
 import '../models/quiz_model.dart';
 import '../models/progress_model.dart';
 import '../models/notification_model.dart';
+import '../models/gamification_model.dart';
+import '../models/vocabulary_model.dart';
+import '../models/media_model.dart';
 
 class AppProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -28,6 +31,20 @@ class AppProvider extends ChangeNotifier {
   List<QuizAttemptModel> _quizAttempts = [];
   int _unreadNotificationsCount = 0;
 
+  // Gamificación (Duolingo Core)
+  StreakModel? _streak;
+  List<BadgeModel> _badges = [];
+  List<LeaderboardEntryModel> _leaderboard = [];
+
+  // Diccionario y Repaso Espaciado (SRS)
+  List<VocabularyCategoryModel> _vocabularyCategories = [];
+  List<VocabularyEntryModel> _vocabularyEntries = [];
+  VocabularyEntryModel? _wordOfTheDay;
+
+  // Biblioteca Multimedia Cultural
+  List<MediaItemModel> _mediaItems = [];
+  List<MediaCollectionModel> _mediaCollections = [];
+
   // ========== GETTERS ==========
   
   UserModel? get user => _user;
@@ -40,6 +57,38 @@ class AppProvider extends ChangeNotifier {
   List<NotificationModel> get notifications => _notifications;
   List<QuizAttemptModel> get quizAttempts => _quizAttempts;
   int get unreadNotificationsCount => _unreadNotificationsCount;
+
+  bool isEnrolled(int courseId) {
+    try {
+      final course = _courses.firstWhere((c) => c.id == courseId);
+      if (course.isEnrolled) return true;
+    } catch (_) {}
+    return _progress.any((p) => p.course == courseId);
+  }
+
+  List<CourseModel> get enrolledCourses =>
+      _courses.where((c) => isEnrolled(c.id)).toList();
+
+  Set<int> get completedQuizzes => _quizAttempts
+      .where((a) => a.passed)
+      .map((a) => a.quiz)
+      .toSet();
+
+  // Gamificación getters
+  StreakModel? get streak => _streak;
+  int get currentStreak => _streak?.currentStreak ?? 0;
+  int get freezeTokens => _streak?.freezeTokens ?? 0;
+  List<BadgeModel> get badges => _badges;
+  List<LeaderboardEntryModel> get leaderboard => _leaderboard;
+
+  // Vocabulario getters
+  List<VocabularyCategoryModel> get vocabularyCategories => _vocabularyCategories;
+  List<VocabularyEntryModel> get vocabularyEntries => _vocabularyEntries;
+  VocabularyEntryModel? get wordOfTheDay => _wordOfTheDay;
+
+  // Multimedia getters
+  List<MediaItemModel> get mediaItems => _mediaItems;
+  List<MediaCollectionModel> get mediaCollections => _mediaCollections;
 
   bool get isAuthenticated => _user != null;
   bool get isAdmin => _user?.isAdmin ?? false;
@@ -77,6 +126,10 @@ class AppProvider extends ChangeNotifier {
         loadQuizzes(),
         loadProgress(),
         loadNotifications(),
+        loadStreak(),
+        loadBadges(),
+        loadLeaderboard(),
+        loadWordOfTheDay(),
       ]);
     } catch (e) {
       print('❌ Error cargando datos iniciales: $e');
@@ -258,6 +311,8 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> enrollCourse(int courseId) => enrollInCourse(courseId);
+
   Future<bool> createCourse({
     required String title,
     required String description,
@@ -325,16 +380,23 @@ class AppProvider extends ChangeNotifier {
       );
 
       // Actualizar nivel y XP del usuario si cambió
-      if (result.containsKey('current_level')) {
+      final newLevel = result['current_level'] ?? result['new_level'] ?? result['level'];
+      final newXp = result['new_total_xp'] ?? result['total_xp'] ?? result['xp'];
+      if (newLevel != null || newXp != null) {
         _user = UserModel.fromJson({
           ..._apiService.userData,
-          'level': result['current_level'],
-          'xp': result['total_xp'],
+          if (newLevel != null) 'level': newLevel,
+          if (newXp != null) 'xp': newXp,
         });
       }
 
-      await loadQuizzes();
-      await loadProgress();
+      await Future.wait([
+        loadQuizzes(),
+        loadProgress(),
+        loadStreak(),
+        loadBadges(),
+        loadLeaderboard(),
+      ]);
       notifyListeners();
 
       return result;
@@ -474,16 +536,152 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // ========== LEADERBOARD ==========
-  
-  Future<List<dynamic>> getLeaderboard() async {
+  // ========== GAMIFICACIÓN (STREAK, BADGES, LEADERBOARD) ==========
+
+  Future<void> loadStreak() async {
     try {
-      return await _apiService.getLeaderboard();
-    } catch (e) {
-      _error = 'Error al cargar clasificación';
+      final data = await _apiService.getMyStreak();
+      _streak = StreakModel.fromJson(data);
       notifyListeners();
-      print('❌ Error en getLeaderboard: $e');
+    } catch (e) {
+      print('❌ Error loading streak: $e');
+    }
+  }
+
+  Future<void> loadBadges() async {
+    try {
+      final data = await _apiService.getMyBadges();
+      _badges = data.map((json) => BadgeModel.fromJson(json)).toList();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error loading badges: $e');
+    }
+  }
+
+  Future<List<LeaderboardEntryModel>> loadLeaderboard({int limit = 50}) async {
+    try {
+      final data = await _apiService.getLeaderboard(limit: limit);
+      final currentUserId = _user?.id ?? 0;
+      _leaderboard = data.asMap().entries.map((entry) {
+        final idx = entry.key + 1;
+        final item = entry.value;
+        if (item is Map<String, dynamic>) {
+          if (!item.containsKey('rank')) {
+            item['rank'] = idx;
+          }
+          return LeaderboardEntryModel.fromJson(item, currentUserId: currentUserId);
+        }
+        return LeaderboardEntryModel(
+          rank: idx,
+          userId: 0,
+          username: 'Usuario',
+          totalXp: 0,
+        );
+      }).toList();
+
+      notifyListeners();
+      return _leaderboard;
+    } catch (e) {
+      print('❌ Error loading leaderboard: $e');
       return [];
+    }
+  }
+
+  // Compatibilidad hacia atrás
+  Future<List<dynamic>> getLeaderboard() async {
+    return await _apiService.getLeaderboard();
+  }
+
+  // ========== VOCABULARIO & REPASO SRS ==========
+
+  Future<void> loadVocabularyCategories() async {
+    try {
+      final data = await _apiService.getVocabularyCategories();
+      _vocabularyCategories = data
+          .map((json) => VocabularyCategoryModel.fromJson(json))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error loading vocabulary categories: $e');
+    }
+  }
+
+  Future<void> loadVocabularyEntries({
+    String? category,
+    String? difficulty,
+    String? search,
+  }) async {
+    try {
+      final data = await _apiService.getVocabularyEntries(
+        category: category,
+        difficulty: difficulty,
+        search: search,
+      );
+      _vocabularyEntries = data
+          .map((json) => VocabularyEntryModel.fromJson(json))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error loading vocabulary entries: $e');
+    }
+  }
+
+  Future<void> loadWordOfTheDay() async {
+    try {
+      final data = await _apiService.getWordOfTheDay();
+      if (data.isNotEmpty) {
+        _wordOfTheDay = VocabularyEntryModel.fromJson(data);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('❌ Error loading word of the day: $e');
+    }
+  }
+
+  Future<bool> updateWordMastery(int entryId, int masteryLevel) async {
+    try {
+      final updated = await _apiService.updateWordProgress(entryId, masteryLevel);
+      // Actualizar localmente la entrada si existe
+      final index = _vocabularyEntries.indexWhere((e) => e.id == entryId);
+      if (index != -1) {
+        _vocabularyEntries[index].masteryLevel = masteryLevel;
+        _vocabularyEntries[index].reviewCount += 1;
+        if (updated.containsKey('next_review_date')) {
+          _vocabularyEntries[index].nextReviewDate =
+              DateTime.tryParse(updated['next_review_date']);
+        }
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      print('❌ Error updating word mastery: $e');
+      return false;
+    }
+  }
+
+  // ========== BIBLIOTECA MULTIMEDIA CULTURAL ==========
+
+  Future<void> loadMediaContent({String? mediaType, String? category}) async {
+    try {
+      final data = await _apiService.getMediaContent(
+        mediaType: mediaType,
+        category: category,
+      );
+      _mediaItems = data.map((json) => MediaItemModel.fromJson(json)).toList();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error loading media items: $e');
+    }
+  }
+
+  Future<void> loadMediaCollections() async {
+    try {
+      final data = await _apiService.getMediaCollections();
+      _mediaCollections =
+          data.map((json) => MediaCollectionModel.fromJson(json)).toList();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error loading media collections: $e');
     }
   }
 

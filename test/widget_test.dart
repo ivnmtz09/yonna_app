@@ -1,23 +1,17 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yonna_app/main.dart';
+import 'package:yonna_app/services/api_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+  testWidgets('App initialization smoke test', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await ApiService().init();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(const MyApp());
+    expect(find.byType(MyApp), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Permitir que el timer del SplashScreen concluya
+    await tester.pump(const Duration(seconds: 4));
   });
 }
