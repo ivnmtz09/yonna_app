@@ -2,17 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_icons.dart';
+import '../../core/network/network_config.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/app_styles.dart';
 import '../../widgets/glass/glass_background.dart';
 import '../../widgets/glass/glass_card.dart';
 import '../../widgets/glass/glass_container.dart';
+import '../../widgets/glass/glass_connection_sheet.dart';
 import '../../widgets/common/glass_icon_badge.dart';
 import '../../widgets/gamification/glass_hud_bar.dart';
 
-class GlassProfileScreen extends StatelessWidget {
+class GlassProfileScreen extends StatefulWidget {
   const GlassProfileScreen({super.key});
+
+  @override
+  State<GlassProfileScreen> createState() => _GlassProfileScreenState();
+}
+
+class _GlassProfileScreenState extends State<GlassProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
@@ -253,15 +261,19 @@ class GlassProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
 
-                          if (provider.canManage) ...[
-                            _buildActionTile(
-                              icon: Icons.admin_panel_settings_outlined,
-                              title: 'Panel de Administración',
-                              isDark: isDark,
-                              onTap: () => Navigator.pushNamed(context, '/admin-stats'),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
+                          _buildActionTile(
+                            icon: Icons.dns_outlined,
+                            title: 'Servidor Backend',
+                            subtitle: NetworkConfig().serverUrl,
+                            isDark: isDark,
+                            onTap: () async {
+                              await GlassConnectionSheet.show(context);
+                              if (mounted) {
+                                setState(() {});
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 8),
 
                           _buildActionTile(
                             icon: Icons.logout_rounded,
@@ -398,6 +410,7 @@ class GlassProfileScreen extends StatelessWidget {
     required String title,
     required bool isDark,
     required VoidCallback onTap,
+    String? subtitle,
     Color? textColor,
     String? badge,
   }) {
@@ -414,13 +427,28 @@ class GlassProfileScreen extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: textColor ?? (isDark ? Colors.white : AppColors.darkText),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: textColor ?? (isDark ? Colors.white : AppColors.darkText),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : AppColors.lightText,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (badge != null) ...[

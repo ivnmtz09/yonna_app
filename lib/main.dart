@@ -11,18 +11,9 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/shell_navigation_screen.dart';
-import 'screens/enhanced_home_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/courses_screen.dart';
-import 'screens/quizzes_screen.dart';
-import 'screens/progress_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/create_course_screen.dart';
-import 'screens/create_quiz_screen.dart';
-import 'screens/quiz/glass_quiz_lesson_screen.dart';
 import 'screens/edit_profile_screen.dart';
-import 'screens/manage_users_screen.dart';
-import 'screens/admin_stats_screen.dart';
+import 'screens/quiz/glass_quiz_lesson_screen.dart';
 import 'models/quiz_model.dart';
 
 Future<void> main() async {
@@ -66,18 +57,9 @@ class MyApp extends StatelessWidget {
               '/leaderboard': (context) => const ShellNavigationScreen(initialTab: 2),
               '/media': (context) => const ShellNavigationScreen(initialTab: 3),
               '/profile': (context) => const ShellNavigationScreen(initialTab: 4),
-              // Vistas auxiliares y administrativas
-              '/enhanced-home': (context) => const EnhancedHomeScreen(),
-              '/old-profile': (context) => const ProfileScreen(),
+              // Vistas auxiliares del aprendiz
               '/edit-profile': (context) => const EditProfileScreen(),
-              '/courses': (context) => const CoursesScreen(),
-              '/quizzes': (context) => const QuizzesScreen(),
-              '/progress': (context) => const ProgressScreen(),
               '/notifications': (context) => const NotificationsScreen(),
-              '/create-course': (context) => const CreateCourseScreen(),
-              '/create-quiz': (context) => const CreateQuizScreen(),
-              '/manage-users': (context) => const ManageUsersScreen(),
-              '/admin-stats': (context) => const AdminStatsScreen(),
             },
             onGenerateRoute: (settings) {
               if (settings.name == '/quiz-attempt') {
