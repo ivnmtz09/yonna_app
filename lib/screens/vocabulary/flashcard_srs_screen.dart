@@ -10,6 +10,7 @@ import '../../widgets/glass/glass_background.dart';
 import '../../widgets/glass/glass_button.dart';
 import '../../widgets/glass/glass_card.dart';
 import '../../widgets/glass/glass_container.dart';
+import '../../widgets/glass/glass_sheet.dart';
 import '../../widgets/common/glass_icon_badge.dart';
 import '../../widgets/common/native_audio_button.dart';
 
@@ -73,62 +74,55 @@ class _FlashcardSrsScreenState extends State<FlashcardSrsScreen>
         _currentIndex++;
       });
     } else {
-      _showCompletionDialog();
+      _showCompletionSheet();
     }
   }
 
-  void _showCompletionDialog() {
+  void _showCompletionSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showDialog(
+    GlassSheet.show(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: BorderRadius.circular(24),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const GlassIconBadge(
-                icon: AppIcons.sparkle,
-                color: AppIcons.vocabColor,
-                size: 64,
-                iconSize: 32,
-                borderRadius: 32,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '¡Repaso SRS Completado!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AppColors.darkText,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Has practicado ${widget.entries.length} palabras en Wayuunaiki. El algoritmo espaciado programará tu próxima sesión.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.white70 : AppColors.lightText,
-                ),
-              ),
-              const SizedBox(height: 24),
-              GlassButton(
-                text: 'Volver al Diccionario',
-                icon: Icons.check_circle_outline_rounded,
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+      isDismissible: false,
+      builder: (sheetCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const GlassIconBadge(
+            icon: AppIcons.sparkle,
+            color: AppIcons.vocabColor,
+            size: 64,
+            iconSize: 32,
+            borderRadius: 32,
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            '¡Repaso SRS Completado!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Has practicado ${widget.entries.length} palabras en Wayuunaiki. El algoritmo espaciado programará tu próxima sesión.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white70 : AppColors.lightText,
+            ),
+          ),
+          const SizedBox(height: 24),
+          GlassButton(
+            text: 'Volver al Diccionario',
+            icon: Icons.check_circle_outline_rounded,
+            onPressed: () {
+              Navigator.pop(sheetCtx);
+              Navigator.pop(context);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -234,13 +228,11 @@ class _FlashcardSrsScreenState extends State<FlashcardSrsScreen>
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        _buildMasteryBtn(0, 'Vista', const Color(0xFF94A3B8)),
+                        _buildMasteryBtn(1, 'Difícil', const Color(0xFFEF4444)),
                         const SizedBox(width: 8),
-                        _buildMasteryBtn(1, 'Aprendiendo', const Color(0xFFF59E0B)),
+                        _buildMasteryBtn(2, 'Bien', AppColors.primaryBlue),
                         const SizedBox(width: 8),
-                        _buildMasteryBtn(2, 'Familiar', AppColors.primaryBlue),
-                        const SizedBox(width: 8),
-                        _buildMasteryBtn(3, 'Dominada', AppColors.successGreen),
+                        _buildMasteryBtn(3, 'Fácil', AppColors.successGreen),
                       ],
                     ),
                   ],
@@ -384,6 +376,14 @@ class _FlashcardSrsScreenState extends State<FlashcardSrsScreen>
                 fontStyle: FontStyle.italic,
                 color: isDark ? Colors.white70 : AppColors.darkText,
               ),
+            ),
+          ],
+          if (entry.audioPronunciation != null) ...[
+            const SizedBox(height: 16),
+            NativeAudioButton(
+              audioUrl: entry.audioPronunciation,
+              size: 52,
+              activeColor: AppColors.primaryBlue,
             ),
           ],
           const Spacer(),

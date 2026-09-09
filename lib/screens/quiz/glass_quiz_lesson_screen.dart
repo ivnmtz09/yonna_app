@@ -207,7 +207,7 @@ class _GlassQuizLessonScreenState extends State<GlassQuizLessonScreen> {
       final xpGained = result['xp_earned'] ?? result['xp_gained'] ?? widget.quiz.xpReward;
       final newLevel = result['current_level'] ?? result['new_level'];
 
-      _showCelebrationDialog(
+      _showCelebrationSheet(
         score: score,
         passed: passed,
         xpGained: xpGained,
@@ -223,7 +223,7 @@ class _GlassQuizLessonScreenState extends State<GlassQuizLessonScreen> {
     }
   }
 
-  void _showCelebrationDialog({
+  void _showCelebrationSheet({
     required double score,
     required bool passed,
     required int xpGained,
@@ -231,125 +231,119 @@ class _GlassQuizLessonScreenState extends State<GlassQuizLessonScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showDialog(
+    GlassSheet.show(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: BorderRadius.circular(28),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GlassIconBadge(
-                icon: passed ? AppIcons.celebrate : AppIcons.speed,
-                color: passed ? AppIcons.successColor : AppIcons.streakColor,
-                size: 72,
-                iconSize: 36,
-                borderRadius: 36,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                passed ? '¡Lección Completada!' : '¡Sigue Practicando!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AppColors.darkText,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Puntaje: ${score.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.primaryOrange,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 20),
+      isDismissible: false,
+      enableDrag: false,
+      builder: (sheetCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlassIconBadge(
+            icon: passed ? AppIcons.celebrate : AppIcons.speed,
+            color: passed ? AppIcons.successColor : AppIcons.streakColor,
+            size: 72,
+            iconSize: 36,
+            borderRadius: 36,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            passed ? '¡Lección Completada!' : '¡Sigue Practicando!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Puntaje: ${score.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.primaryOrange,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 20),
 
-              // Recompensa en cristal (XP + Racha)
-              GlassContainer(
-                borderRadius: BorderRadius.circular(16),
-                backgroundColor: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.black.withValues(alpha: 0.04),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+          // Recompensa en cristal (XP + Racha)
+          GlassContainer(
+            borderRadius: BorderRadius.circular(16),
+            backgroundColor: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Icon(AppIcons.xp, color: AppIcons.xpColor, size: 22),
-                        const SizedBox(width: 6),
-                        Text(
-                          '+$xpGained XP',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryOrange,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        Icon(AppIcons.streak, color: AppIcons.streakColor, size: 22),
-                        SizedBox(width: 6),
-                        Text(
-                          'Racha Activa',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                    const Icon(AppIcons.xp, color: AppIcons.xpColor, size: 22),
+                    const SizedBox(width: 6),
+                    Text(
+                      '+$xpGained XP',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryOrange,
+                      ),
                     ),
                   ],
                 ),
-              ),
-
-              if (newLevel != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryOrange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(AppIcons.level, color: AppColors.primaryOrange, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        '¡Has subido al Nivel $newLevel!',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryOrange,
-                        ),
+                const Row(
+                  children: [
+                    Icon(AppIcons.streak, color: AppIcons.streakColor, size: 22),
+                    SizedBox(width: 6),
+                    Text(
+                      'Racha Activa',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
-
-              const SizedBox(height: 24),
-              GlassButton(
-                text: 'Continuar',
-                icon: Icons.check_rounded,
-                onPressed: () {
-                  Navigator.pop(dialogCtx);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+            ),
           ),
-        ),
+
+          if (newLevel != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryOrange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(AppIcons.level, color: AppColors.primaryOrange, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    '¡Has subido al Nivel $newLevel!',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryOrange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+          GlassButton(
+            text: 'Continuar',
+            icon: Icons.check_rounded,
+            onPressed: () {
+              Navigator.pop(sheetCtx);
+              Navigator.pop(context);
+            },
+          ),
+        ],
       ),
     );
   }

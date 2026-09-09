@@ -62,28 +62,33 @@ Barra flotante de vidrio accesible desde las pantallas clave que muestra:
 - Preguntas de opción múltiple, selección interactiva y retroalimentación inmediata.
 - Ventana inferior de resultados con sonidos hápticos, cálculo de puntaje, otorgamiento de XP y avance curricular en la base de datos.
 
-### 4. 📇 Vocabulario & Tarjetas de Repetición Espaciada (`VocabularyScreen` & `FlashcardSrsScreen`)
-- Diccionario bilingüe Wayuunaiki - Español filtrable por categorías temáticas (*Saludos, Naturaleza, Familia, Números, Cultura*).
-- Modo de estudio con Flashcards animadas: volteo 3D con toque, pronunciación asistida por audio nativo y botones de autoevaluación SRS (*Difícil, Bien, Fácil*).
-- "Palabra del Día" destacada en tarjeta de vidrio iridiscente.
+### 4. 📇 Vocabulario & Motor de Tarjetas SRS 3D (`VocabularyScreen`)
+- **Modo Dual Integrado**: Alternancia fluida entre práctica intensiva de **Tarjetas SRS** y consulta rápida del **Diccionario**.
+- **Tarjeta Central 3D Flip**: Efecto de perspectiva y rotación tridimensional en vidrio esmerilado con pronunciación bilingüe mediante botón nativo de audio `NativeAudioButton` en anverso y reverso.
+- **Botones Ergonómicos de Autoevaluación SRS**: Opciones flotantes `Difícil` (1), `Bien` (2) y `Fácil` (3) que alimentan el algoritmo de repetición espaciada y programan los repasos.
+- **Hoja Deslizante de Finalización (`GlassSheet`)**: Resumen de progreso al culminar la baraja sin interrumpir el flujo con cuadros de diálogo invasivos.
+- "Palabra del Día" destacada en tarjeta de vidrio iridiscente con ejemplos contextuales.
 
 ### 5. 🏆 Podio y Clasificación Global (`GlassLeaderboardScreen`)
 - Podio visual de los tres primeros lugares con avatares enmarcados, coronas doradas, plateadas y de bronce.
 - Ranking en tiempo real con competidores activos, estadísticas de XP y resaltado de la posición del usuario actual.
 
-### 6. 📊 Analítica y Progreso Personal (`ProgressScreen`)
-- Tarjetas de vidrio con resumen de métricas clave (Quizzes aprobados, porcentaje de avance global, XP total).
-- Gráfico de área spline de alta precisión implementado con **Syncfusion Flutter Charts** (`SfCartesianChart`), mostrando la curva de actividad de los últimos 7 días con soporte adaptativo a temas claro y oscuro.
-
-### 7. 👤 Perfil y Personalización (`GlassProfileScreen`)
-- Avatar del usuario con insignia de rol (*Estudiante, Moderador, Administrador*).
+### 6. 👤 Perfil y Personalización (`GlassProfileScreen`)
+- Avatar del usuario con insignia de rol y nivel alcanzado.
 - Vitrina de insignias y logros obtenidos (*Racha de Fuego, Maestro del Saber, Coleccionista, etc.*).
 - Selector de tema de la aplicación: **Modo Claro**, **Modo Oscuro** o **Automático del Sistema**.
+- Acceso directo a la configuración dinámica del servidor backend con estado de enlace en tiempo real.
 
-### 8. 🛡️ Suite Administrativa
-- **Estadísticas del Sistema (`AdminStatsScreen`)**: Gráficos de dona Syncfusion (`SfCircularChart`) para distribución de niveles, KPIs de usuarios registrados y tasas de completitud.
-- **Gestión de Usuarios (`ManageUsersScreen`)**: Búsqueda en tiempo real, filtro por roles y asignación de permisos administrativos en tarjetas de vidrio.
-- **Creadores de Contenido (`CreateCourseScreen` & `CreateQuizScreen`)**: Formularios de vidrio para publicar nuevos cursos y diseñar preguntas interactivas.
+### 7. 🌐 Capa de Red Inteligente y Resiliencia (`NetworkConfig` & `GlassConnectionSheet`)
+- **Resolución Dinámica de Servidor**: Conmutación inmediata de host y puerto sin necesidad de recompilar la aplicación.
+- **Presets Integrados**: Compatibilidad lista con túnel USB ADB (`127.0.0.1:8000`), Emulador Android (`10.0.2.2:8000`) y direcciones IP locales de red LAN.
+- **Diagnóstico Asistido**: Detección inteligente de fallos de conexión (como `SocketException: Connection refused (errno 111)`) con indicaciones exactas paso a paso para el usuario.
+- **Acceso Rápido**: Disponible tanto desde la pantalla de inicio de sesión/registro como desde el perfil del usuario.
+
+### 8. 📐 Enfoque Modular del Ecosistema
+Siguiendo las especificaciones arquitectónicas de `Arquitectura_Ecosistema_Yonna_Akademia.md`:
+- **Aplicación Móvil (Flutter)**: Dedicada exclusivamente al consumo educativo y al bucle activo de gamificación del estudiante (Ruta de aprendizaje, Quizzes, SRS, Podio y Perfil).
+- **Plataforma Web (Angular/React)**: Centraliza la gestión administrativa, analítica institucional y creación de contenidos (CMS).
 
 ---
 
