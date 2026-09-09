@@ -8,6 +8,7 @@ import '../widgets/app_styles.dart';
 import '../widgets/glass/glass_background.dart';
 import '../widgets/glass/glass_button.dart';
 import '../widgets/glass/glass_card.dart';
+import '../widgets/glass/glass_connection_sheet.dart';
 import '../widgets/glass/glass_container.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -44,10 +45,24 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
+      final errorMsg = provider.error ?? 'Credenciales incorrectas';
+      final isConnectionIssue = errorMsg.contains('servidor') ||
+          errorMsg.contains('conectar') ||
+          errorMsg.contains('red') ||
+          errorMsg.contains('Django');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.error ?? 'Credenciales incorrectas'),
+          content: Text(errorMsg),
           backgroundColor: AppColors.errorRed,
+          duration: const Duration(seconds: 4),
+          action: isConnectionIssue
+              ? SnackBarAction(
+                  label: 'Configurar',
+                  textColor: Colors.white,
+                  onPressed: () => GlassConnectionSheet.show(context),
+                )
+              : null,
         ),
       );
     }
@@ -88,23 +103,47 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        themeProvider.cycleThemeMode();
-                      },
-                      borderRadius: BorderRadius.circular(21),
-                      child: GlassContainer(
-                        width: 42,
-                        height: 42,
-                        borderRadius: BorderRadius.circular(21),
-                        padding: EdgeInsets.zero,
-                        child: Icon(
-                          themeProvider.themeIcon,
-                          size: 19,
-                          color: isDark ? Colors.white : AppColors.darkText,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            GlassConnectionSheet.show(context);
+                          },
+                          borderRadius: BorderRadius.circular(21),
+                          child: GlassContainer(
+                            width: 42,
+                            height: 42,
+                            borderRadius: BorderRadius.circular(21),
+                            padding: EdgeInsets.zero,
+                            child: Icon(
+                              Icons.dns_rounded,
+                              size: 19,
+                              color: isDark ? Colors.white : AppColors.darkText,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            themeProvider.cycleThemeMode();
+                          },
+                          borderRadius: BorderRadius.circular(21),
+                          child: GlassContainer(
+                            width: 42,
+                            height: 42,
+                            borderRadius: BorderRadius.circular(21),
+                            padding: EdgeInsets.zero,
+                            child: Icon(
+                              themeProvider.themeIcon,
+                              size: 19,
+                              color: isDark ? Colors.white : AppColors.darkText,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

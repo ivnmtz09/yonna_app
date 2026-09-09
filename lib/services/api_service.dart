@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/network/network_config.dart';
 
 class ApiService {
-  // --- CONFIGURACIÓN BASE ---
-  // Se utiliza 127.0.0.1 aprovechando el túnel USB directo 'adb reverse tcp:8000 tcp:8000'
-  static const String _host = '127.0.0.1';
-  static const String serverUrl = 'http://$_host:8000';
-  static const String baseUrl = '$serverUrl/api/';
+  // --- CONFIGURACIÓN BASE DINÁMICA ---
+  static String get serverUrl => NetworkConfig().serverUrl;
+  static String get baseUrl => NetworkConfig().baseUrl;
 
   // --- SINGLETON ---
   static final ApiService _instance = ApiService._internal();
@@ -19,11 +20,14 @@ class ApiService {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    await NetworkConfig().init(_prefs);
     final userJson = _prefs.getString('userData');
     if (userJson != null) {
       userData = jsonDecode(userJson);
     }
   }
+
+  Future<NetworkHealthResult> checkHealth() => NetworkConfig().checkHealth();
 
   // --- HELPERS PRIVADOS ---
   String? _getAccessToken() => _prefs.getString('access_token');
@@ -124,6 +128,12 @@ class ApiService {
       }
 
       return await _handleResponse(response);
+    } on SocketException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on TimeoutException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on http.ClientException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
     } catch (e) {
       print('Error en _makeAuthenticatedRequest: $e');
       rethrow;
@@ -141,12 +151,18 @@ class ApiService {
         Uri.parse('${baseUrl}auth/login/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = await _handleResponse(response);
       await _saveTokens(data['access'], data['refresh']);
       await _saveUserData(data);
       return data;
+    } on SocketException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on TimeoutException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on http.ClientException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
     } catch (e) {
       print('Error en login: $e');
       rethrow;
@@ -160,18 +176,29 @@ class ApiService {
     required String password1,
     required String password2,
   }) async {
-    final response = await http.post(
-      Uri.parse('${baseUrl}auth/register/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'first_name': firstName,
-        'last_name': lastName,
-        'password1': password1,
-        'password2': password2,
-      }),
-    );
-    return await _handleResponse(response);
+    try {
+      final response = await http.post(
+        Uri.parse('${baseUrl}auth/register/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'first_name': firstName,
+          'last_name': lastName,
+          'password1': password1,
+          'password2': password2,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      return await _handleResponse(response);
+    } on SocketException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on TimeoutException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } on http.ClientException catch (e) {
+      throw Exception(NetworkConfig.formatErrorMessage(e));
+    } catch (e) {
+      print('Error en register: $e');
+      rethrow;
+    }
   }
 
   Future<bool> refreshToken() async {
